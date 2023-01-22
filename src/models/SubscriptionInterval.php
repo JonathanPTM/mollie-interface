@@ -26,6 +26,7 @@ use Carbon\Carbon;
 
 enum SubscriptionInterval: int
 {
+    case DAILY = 0;
     case MONTHLY = 1;
     case QUARTERLY = 4;
     case SEMIYEARLY = 6;
@@ -34,6 +35,7 @@ enum SubscriptionInterval: int
     public function getName(): string
     {
         return match ($this) {
+            self::DAILY => 'Dagelijks',
             self::MONTHLY => 'Maandelijks',
             self::QUARTERLY => 'Per kwartaal',
             self::SEMIYEARLY => 'Per halfjaar',
@@ -44,6 +46,7 @@ enum SubscriptionInterval: int
     public function toMollie(): string
     {
         return match ($this) {
+            self::DAILY => '1 day',
             self::MONTHLY => '1 month',
             self::QUARTERLY => '3 months',
             self::SEMIYEARLY => '6 months',
@@ -54,6 +57,7 @@ enum SubscriptionInterval: int
     public function getLetter(): string
     {
         return match ($this) {
+            self::DAILY => 'd',
             self::MONTHLY => 'm',
             self::QUARTERLY => 'k',
             self::SEMIYEARLY => 'h',
@@ -63,6 +67,10 @@ enum SubscriptionInterval: int
 
     public function nextDate($now=null)
     {
+        if ($this->getLetter() === 'd'){
+            if ($now) return $now->addDays($this->value);
+            return now()->addDays($this->value);
+        }
         if ($now) return $now->addMonths($this->value);
         return now()->addMonths($this->value);
     }

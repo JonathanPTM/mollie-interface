@@ -51,6 +51,10 @@ trait PTMBillable
         return $this->morphMany(Subscription::class, 'billable');
     }
 
+    /**
+     * @param $identifier
+     * @return Subscription|null
+     */
     public function getSubscription($identifier)
     {
         return $this->subscriptions()->firstWhere('subscribed_on', $identifier);
