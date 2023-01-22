@@ -1,6 +1,6 @@
 {
     "name": "ptmdevelopment/mollie_interface",
-    "description": "A mollie api wrapper for subscriptions and events, based on Mollie php api, Mollie laravel api and Mollie cashier. ",
+    "description": "A mollie api wrapper for subscriptions and events, based on Mollie php api, Mollie laravel api and Mollie cashier.",
     "authors": [
         {
             "name": "Jonathan Peetoom",
