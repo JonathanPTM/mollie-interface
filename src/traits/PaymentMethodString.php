@@ -57,11 +57,6 @@ trait PaymentMethodString
      */
     private function money_to_mollie_array(float $money)
     {
-//        $moneyFormatter = new DecimalMoneyFormatter(new ISOCurrencies());
-//        $moneyParser = new DecimalMoneyParser(new ISOCurrencies());
-
-//        $money = $moneyParser->parse((string)$money, new Currency('EUR'));
-
         return [
             'currency' => "EUR",//$money->getCurrency()->getCode(),
             'value' => number_format($money, 2, '.')//$moneyFormatter->format($money),

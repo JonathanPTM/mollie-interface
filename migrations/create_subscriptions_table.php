@@ -18,6 +18,7 @@ class CreatePtmSubscriptionsTable extends Migration
             $table->text('subscribed_on');
             $table->foreignId('plan_id');
             $table->morphs('billable');
+            $table->string('mollie_subscription_id')->nullable();
             $table->decimal('tax_percentage', 6, 4)->default(0);
             $table->datetime('ends_at')->nullable();
             $table->datetime('cycle_started_at');

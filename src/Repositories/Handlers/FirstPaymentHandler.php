@@ -24,8 +24,12 @@
 namespace PTM\MollieInterface\Repositories\Handlers;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Event;
 use Mollie\Api\Resources\Payment;
+use Mollie\Api\Resources\Subscription;
+use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\contracts\Handler;
+use PTM\MollieInterface\Events\SubscriptionCreated;
 use PTM\MollieInterface\models\MollieCustomer;
 use PTM\MollieInterface\traits\PTMBillable;
 
@@ -49,13 +53,28 @@ class FirstPaymentHandler implements Handler
 
     public function execute(){
         $record = \PTM\MollieInterface\models\Payment::findByPaymentIdOrFail($this->molliePayment->id);
+
         $record->update([
             'mollie_payment_status'=>$this->molliePayment->status,
             'mollie_mandate_id'=>$this->molliePayment->mandateId
         ]);
-        $this->owner->mollieCustomer->update([
-            'mollie_mandate_id'=>$this->molliePayment->mandateId
-        ]);
+
+        if ($this->owner){
+            $this->owner->mollieCustomer()->update([
+                'mollie_mandate_id'=>$this->molliePayment->mandateId
+            ]);
+        }
+
+        $paymentable = $record->paymentable;
+        if ($paymentable instanceof \PTM\MollieInterface\models\Subscription){
+            $subscription = $paymentable;
+            $mollieSubscription = $this->owner->CustomerAPI()->createSubscription($subscription->toMollie());
+            $subscription->update([
+                'mollie_subscription_id'=>$mollieSubscription->id
+            ]);
+            Event::dispatch(new SubscriptionCreated($subscription));
+        }
+
         return $record;
     }
 

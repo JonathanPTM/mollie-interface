@@ -1,6 +1,6 @@
 <?php
 /*
- *  mollie_interface - SubscriptionInterval.php Copyright (c) 2023 PTMDevelopment -  Jonathan. All rights reserved.
+ *  mollie_interface - SubscriptionCreated.php Copyright (c) 2023 PTMDevelopment -  Jonathan. All rights reserved.
  *  The software is protected by copyright laws and international copyright treaties,
  *  as well as other intellectual property laws and treaties. The software is licensed, not sold.
  *  You are not allowed to resell, claim ownership of, or modify the software in any way.
@@ -21,49 +21,19 @@
  *  SOFTWARE.
  */
 
-namespace PTM\MollieInterface\models;
-use Carbon\Carbon;
+namespace PTM\MollieInterface\Events;
 
-enum SubscriptionInterval: int
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+use PTM\MollieInterface\models\Subscription;
+
+class SubscriptionCreated
 {
-    case MONTHLY = 1;
-    case QUARTERLY = 4;
-    case SEMIYEARLY = 6;
-    case YEARLY = 12;
+    use SerializesModels, Dispatchable;
 
-    public function getName(): string
+    public Subscription $subscription;
+    public function __construct(Subscription $subscription)
     {
-        return match ($this) {
-            self::MONTHLY => 'Maandelijks',
-            self::QUARTERLY => 'Per kwartaal',
-            self::SEMIYEARLY => 'Per halfjaar',
-            self::YEARLY => 'Jaarlijks'
-        };
-    }
-
-    public function toMollie(): string
-    {
-        return match ($this) {
-            self::MONTHLY => '1 month',
-            self::QUARTERLY => '3 months',
-            self::SEMIYEARLY => '6 months',
-            self::YEARLY => '12 months'
-        };
-    }
-
-    public function getLetter(): string
-    {
-        return match ($this) {
-            self::MONTHLY => 'm',
-            self::QUARTERLY => 'k',
-            self::SEMIYEARLY => 'h',
-            self::YEARLY => 'j'
-        };
-    }
-
-    public function nextDate($now=null)
-    {
-        if ($now) return $now->addMonths($this->value);
-        return now()->addMonths($this->value);
+        $this->subscription = $subscription;
     }
 }

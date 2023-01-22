@@ -24,10 +24,14 @@
 namespace PTM\MollieInterface\models;
 
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Support\Facades\Event;
+use PTM\MollieInterface\Events\SubscriptionCancelled;
+use PTM\MollieInterface\traits\PaymentMethodString;
 
 class Subscription extends \Illuminate\Database\Eloquent\Model
 {
-    use \Illuminate\Database\Eloquent\Factories\HasFactory;
+    use \Illuminate\Database\Eloquent\Factories\HasFactory, PaymentMethodString;
 
     protected $table = 'ptm_subscriptions';
 
@@ -39,6 +43,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     protected $fillable = [
         'subscribed_on',
         'plan_id',
+        'mollie_subscription_id',
         'tax_percentage',
         'ends_at',
         'cycle_started_at',
@@ -70,10 +75,38 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     }
 
     /**
-     * Get current cycle.
+     * Retrieve an Order by the Mollie Payment id.
+     *
+     * @param $id
+     * @return static
+     */
+    public static function findByPaymentId($id): ?self
+    {
+        return static::where('mollie_subscription_id', $id)->first();
+    }
+
+    /**
+     * Retrieve a Payment by the Mollie Payment id or throw an Exception if not found.
+     *
+     * @param $id
+     * @return static
+     *
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     */
+    public static function findByPaymentIdOrFail($id): self
+    {
+        if ($id instanceof \Mollie\Api\Resources\Subscription) $id = $id->id;
+        return static::where('mollie_subscription_id', $id)->firstOrFail();
+    }
+
+    /**
+     * Get current interval.
      * @return SubscriptionInterval
      */
-    public function getCycle()
+    public function getCycle(){
+        return $this->getInterval();
+    }
+    public function getInterval()
     {
         if (!$this->cycle_started_at || !$this->cycle_ends_at) return SubscriptionInterval::MONTHLY;
         try {
@@ -82,5 +115,38 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
             \Illuminate\Support\Facades\Log::error($exception);
             return SubscriptionInterval::MONTHLY;
         }
+    }
+
+    public function endSubscription(bool $force=false){
+        if (!$this->mollie_subscription_id) {
+            throw new \RuntimeException("Subscription hasn't started yet. Mollie subscription ID is missing.");
+        }
+        // End subscription at mollie's end...
+        $billable = $this->billable;
+        $billable->CustomerAPI()->getSubscription($this->mollie_subscription_id)->cancel();
+
+        $this->update([
+            'ends_at'=>$force ? now() : $this->cycle_ends_at
+        ]);
+        Event::dispatch(new SubscriptionCancelled($this));
+    }
+
+    public function toMollie(){
+        $interval = $this->getInterval();
+        return [
+            'amount'=>$this->money_to_mollie_array($this->plan->mandatedAmount($interval)),
+            'interval'=>$interval->toMollie(),
+            'startDate'=>Carbon::parse($this->cycle_ends_at)->format('Y-m-d'),
+            'description'=>$this->plan->description,
+            'mandateId'=>$this->billable->mollieCustomer->mollie_mandate_id,
+            'webhookUrl'=>route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $this->id]),
+            'metadata'=>[
+                'subscribed_on'=>$this->subscribed_on,
+                'billable'=>[
+                    'type'=>$this->billable_type,
+                    'id'=>$this->billable_id
+                ]
+            ]
+        ];
     }
 }
