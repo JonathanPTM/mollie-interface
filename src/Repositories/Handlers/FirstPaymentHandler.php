@@ -48,7 +48,7 @@ class FirstPaymentHandler implements Handler
     }
 
     public function execute(){
-        $record = \PTM\MollieInterface\models\Payment::findByPaymentIdOrFail($this->molliePayment);
+        $record = \PTM\MollieInterface\models\Payment::findByPaymentIdOrFail($this->molliePayment->id);
         $record->update([
             'mollie_payment_status'=>$this->molliePayment->status,
             'mollie_mandate_id'=>$this->molliePayment->mandateId

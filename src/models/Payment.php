@@ -111,6 +111,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
      */
     public static function findByPaymentIdOrFail($id): self
     {
+        if ($id instanceof \Mollie\Api\Resources\Payment) $id = $id->id;
         return static::where('mollie_payment_id', $id)->firstOrFail();
     }
 
