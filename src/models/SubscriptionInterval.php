@@ -28,7 +28,7 @@ enum SubscriptionInterval: int
 {
     case DAILY = 0;
     case MONTHLY = 1;
-    case QUARTERLY = 4;
+    case QUARTERLY = 3;
     case SEMIYEARLY = 6;
     case YEARLY = 12;
 
