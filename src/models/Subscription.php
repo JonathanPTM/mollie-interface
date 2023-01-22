@@ -134,7 +134,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     public function toMollie($startNow=false){
         $interval = $this->getInterval();
         return [
-            'amount'=>$this->money_to_mollie_array($this->plan->mandatedAmount($interval)),
+            'amount'=>$this->money_to_mollie_array($this->plan->mandatedAmountIncl($interval, $this->tax_percentage)),
             'interval'=>$interval->toMollie(),
             'startDate'=> ($startNow ? now() : Carbon::parse($this->cycle_ends_at))->format('Y-m-d'),
             'description'=>($this->subscribed_on ?? $this->id)." - ".$this->plan->description,

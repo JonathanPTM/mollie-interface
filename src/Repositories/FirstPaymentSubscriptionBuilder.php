@@ -52,7 +52,7 @@ class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder
 
     public static function fromPlan(Model $billable, Plan $plan, array $options = [])
     {
-        return new self($billable, $plan->mandatedAmount(), $plan->description, $options, $plan);
+        return new self($billable, $plan->mandatedAmountIncl(SubscriptionInterval::MONTHLY, env('SUBSCRIPTION_TAX', 21)), $plan->description, $options, $plan);
     }
 
     public function create()
@@ -131,7 +131,7 @@ class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder
     public function setInterval(SubscriptionInterval $interval)
     {
         $this->interval = $interval;
-        if ($this->plan) $this->total = $this->plan->mandatedAmount($interval);
+        if ($this->plan) $this->total = $this->plan->mandatedAmountIncl($interval, $this->taxPercentage);
         return $this;
     }
 }

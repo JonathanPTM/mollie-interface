@@ -80,4 +80,15 @@ class Plan extends Model
         return (double)($this->amount * $interval->value);
     }
 
+    public function mandatedAmountIncl(SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, float $tax=21): float
+    {
+        $excluded = $this->mandatedAmount($interval);
+        if ($tax < 1 && $tax > 0){
+            $percentage = $tax;
+        } else {
+            $percentage = (1 + ($tax/100) );
+        }
+        return $excluded*$percentage;
+    }
+
 }

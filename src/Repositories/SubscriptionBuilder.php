@@ -47,7 +47,7 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
 
     public static function fromPlan(Model $billable, Plan $plan, array $options = [])
     {
-        return new self($billable, $plan->mandatedAmount(), $plan->description, $options, $plan);
+        return new self($billable, $plan->mandatedAmountIncl(SubscriptionInterval::MONTHLY, env('SUBSCRIPTION_TAX', 21)), $plan->description, $options, $plan);
     }
 
     public function create()
