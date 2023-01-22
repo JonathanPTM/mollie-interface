@@ -68,8 +68,8 @@ enum SubscriptionInterval: int
     public function nextDate($now=null)
     {
         if ($this->getLetter() === 'd'){
-            if ($now) return $now->addDays($this->value);
-            return now()->addDays($this->value);
+            if ($now) return $now->addDay();
+            return now()->addDay();
         }
         if ($now) return $now->addMonths($this->value);
         return now()->addMonths($this->value);
