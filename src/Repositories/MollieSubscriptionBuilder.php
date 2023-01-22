@@ -1,6 +1,6 @@
 <?php
 /*
- *  mollie_interface - PTMBillable.php Copyright (c) 2023 PTMDevelopment -  Jonathan. All rights reserved.
+ *  mollie_interface - MollieSubscriptionBuilder.php Copyright (c) 2023 PTMDevelopment -  Jonathan. All rights reserved.
  *  The software is protected by copyright laws and international copyright treaties,
  *  as well as other intellectual property laws and treaties. The software is licensed, not sold.
  *  You are not allowed to resell, claim ownership of, or modify the software in any way.
@@ -21,44 +21,37 @@
  *  SOFTWARE.
  */
 
-namespace PTM\MollieInterface\traits;
+namespace PTM\MollieInterface\Repositories;
 
-use PTM\MollieInterface\contracts\SubscriptionBuilder;
-use PTM\MollieInterface\models\Plan;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Event;
+use Mollie\Api\Resources\Payment;
+use PTM\MollieInterface\contracts\Handler;
+use PTM\MollieInterface\Events\SubscriptionCreated;
 use PTM\MollieInterface\models\Subscription;
-use PTM\MollieInterface\models\SubscriptionInterval;
-use PTM\MollieInterface\Repositories\FirstPaymentSubscriptionBuilder;
+use PTM\MollieInterface\traits\PTMBillable;
 
-trait PTMBillable
+class MollieSubscriptionBuilder implements Handler
 {
-    use isMollieCustomer;
+    /** @var PTMBillable|Model */
+    protected $owner;
 
-    public function subscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY): SubscriptionBuilder
+    /** @var Subscription */
+    protected $subscription;
+    protected $hasFirstPayment;
+    public function __construct(Subscription $subscription, Model $owner, bool $hasFirstPayment=true)
     {
-        if (!empty($this->mollieCustomer) && !empty($this->mollieCustomer->mollie_mandate_id)) {
-            return \PTM\MollieInterface\Repositories\SubscriptionBuilder::fromPlan($this, $plan, [])->subscribedOn($subscribed_on);
-        }
-        return FirstPaymentSubscriptionBuilder::fromPlan($this, $plan, [])->subscribedOn($subscribed_on);
+        $this->subscription = $subscription;
+        $this->owner = $owner;
+        $this->hasFirstPayment = $hasFirstPayment;
     }
-
-    /**
-     * Get all subscriptions associated with this model
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\MorphMany
-     */
-    public function subscriptions()
+    public function execute()
     {
-        return $this->morphMany(Subscription::class, 'billable');
+        $mollieSubscription = $this->owner->CustomerAPI()->createSubscription($this->subscription->toMollie(!$this->hasFirstPayment));
+        $this->subscription->update([
+            'mollie_subscription_id'=>$mollieSubscription->id
+        ]);
+        Event::dispatch(new SubscriptionCreated($this->subscription));
+        return $mollieSubscription;
     }
-
-    /**
-     * @param $identifier
-     * @return Subscription|null
-     */
-    public function getSubscription($identifier)
-    {
-        return $this->subscriptions()->firstWhere('subscribed_on', $identifier);
-    }
-
-
 }

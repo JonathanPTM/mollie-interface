@@ -31,6 +31,7 @@ use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\contracts\Handler;
 use PTM\MollieInterface\Events\SubscriptionCreated;
 use PTM\MollieInterface\models\MollieCustomer;
+use PTM\MollieInterface\Repositories\MollieSubscriptionBuilder;
 use PTM\MollieInterface\traits\PTMBillable;
 
 class FirstPaymentHandler implements Handler
@@ -68,11 +69,7 @@ class FirstPaymentHandler implements Handler
         $paymentable = $record->paymentable;
         if ($paymentable instanceof \PTM\MollieInterface\models\Subscription){
             $subscription = $paymentable;
-            $mollieSubscription = $this->owner->CustomerAPI()->createSubscription($subscription->toMollie());
-            $subscription->update([
-                'mollie_subscription_id'=>$mollieSubscription->id
-            ]);
-            Event::dispatch(new SubscriptionCreated($subscription));
+            (new MollieSubscriptionBuilder($subscription, $this->owner, true))->execute();
         }
 
         return $record;

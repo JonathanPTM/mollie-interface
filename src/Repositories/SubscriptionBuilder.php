@@ -1,6 +1,6 @@
 <?php
 /*
- *  mollie_interface - FirstPaymentSubscriptionBuilder.php Copyright (c) 2023 PTMDevelopment -  Jonathan. All rights reserved.
+ *  mollie_interface - SubscriptionBuilder.php Copyright (c) 2023 PTMDevelopment -  Jonathan. All rights reserved.
  *  The software is protected by copyright laws and international copyright treaties,
  *  as well as other intellectual property laws and treaties. The software is licensed, not sold.
  *  You are not allowed to resell, claim ownership of, or modify the software in any way.
@@ -23,20 +23,15 @@
 
 namespace PTM\MollieInterface\Repositories;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Mollie\Api\Types\SequenceType;
-use Mollie\Laravel\Facades\Mollie;
-use PTM\MollieInterface\contracts\SubscriptionBuilder;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\SubscriptionInterval;
-use PTM\MollieInterface\traits\PaymentBuilder;
 
-class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder
+class SubscriptionBuilder implements \PTM\MollieInterface\contracts\SubscriptionBuilder
 {
-    use PaymentBuilder;
-
     private $thread;
-
     public function __construct(Model $owner, float $total, string $description, array $options = [], ?Plan $plan = null)
     {
         $this->owner = $owner;
@@ -57,46 +52,26 @@ class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder
 
     public function create()
     {
+        if (!$this->owner->mollieCustomer || !$this->owner->mollieCustomer->mollie_mandate_id) {
+            throw new \Exception("Mollie customer doesn't have mandateID!");
+        }
         // Create subscription entry
         $subscription = $this->buildSubscription();
-
-        // Get payment variables
-        $payload = $this->getMolliePayload();
-        // Create mollie payment
-        $this->molliePayment = Mollie::api()->payments()->create($payload);
-        // Connect payment to the subscription
-        $subscription->payments()->create($this->getPaymentPayload());
-
-        return $this->molliePayment;
+        return (new MollieSubscriptionBuilder($subscription, $this->owner))->execute();
     }
 
-    /**
-     * Create subscription model and mollie instance
-     * @return mixed
-     */
-    private function buildSubscription()
-    {
-        $subscription = $this->owner->subscriptions()->where('subscribed_on', $this->thread)->where('plan_id', $this->plan->id ?? 0)->whereNull('ends_at')->first();
-        if (!$subscription) {
-            $subscription = $this->owner->subscriptions()->create([
-                'subscribed_on' => $this->thread,
-                'plan_id' => $this->plan->id ?? 0,
-                'tax_percentage' => $this->taxPercentage ?? 0,
-                'ends_at' => null,
-                'cycle_started_at' => now(),
-                'cycle_ends_at' => $this->interval->nextDate()
-            ]);
-        }
+    private function buildSubscription(){
+        $subscription = $this->owner->subscriptions()->create([
+            'subscribed_on' => $this->thread,
+            'plan_id' => $this->plan->id ?? 0,
+            'tax_percentage' => $this->taxPercentage ?? 0,
+            'ends_at' => null,
+            'cycle_started_at' => now(),
+            'cycle_ends_at' => $this->interval->nextDate()
+        ]);
         $this->subscriptionID = $subscription->id;
-        if (!$this->redirectUrl) $this->redirectUrl = route('ptm_mollie.redirect.subscription', ['id' => $subscription->id]);
-        $this->webhookUrl = route('ptm_mollie.webhook.payment.first', ['subscription_id' => $subscription->id]);
-
+        $this->webhookUrl = route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $subscription->id]);
         return $subscription;
-    }
-
-    public function nextPaymentAt(\Carbon\Carbon $nextPaymentAt)
-    {
-        // TODO: Implement nextPaymentAt() method.
     }
 
     public function subscribedOn($identifier)
@@ -133,5 +108,10 @@ class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder
         $this->interval = $interval;
         if ($this->plan) $this->total = $this->plan->mandatedAmount($interval);
         return $this;
+    }
+
+    public function nextPaymentAt(Carbon $nextPaymentAt)
+    {
+        // TODO: Implement nextPaymentAt() method.
     }
 }

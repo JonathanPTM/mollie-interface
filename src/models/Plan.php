@@ -74,6 +74,9 @@ class Plan extends Model
         if (isset($this->intervals->$letter)) {
             return (double)$this->intervals->$letter;
         }
+        if ($letter === 'd'){
+            return (double)($this->amount * ($interval->value+1));
+        }
         return (double)($this->amount * $interval->value);
     }
 

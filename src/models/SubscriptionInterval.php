@@ -46,7 +46,7 @@ enum SubscriptionInterval: int
     public function toMollie(): string
     {
         return match ($this) {
-            self::DAILY => '1 day',
+            self::DAILY => '1 days',
             self::MONTHLY => '1 month',
             self::QUARTERLY => '3 months',
             self::SEMIYEARLY => '6 months',

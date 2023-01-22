@@ -131,12 +131,12 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         Event::dispatch(new SubscriptionCancelled($this));
     }
 
-    public function toMollie(){
+    public function toMollie($startNow=false){
         $interval = $this->getInterval();
         return [
             'amount'=>$this->money_to_mollie_array($this->plan->mandatedAmount($interval)),
             'interval'=>$interval->toMollie(),
-            'startDate'=>Carbon::parse($this->cycle_ends_at)->format('Y-m-d'),
+            'startDate'=> ($startNow ? now() : Carbon::parse($this->cycle_ends_at))->format('Y-m-d'),
             'description'=>$this->plan->description,
             'mandateId'=>$this->billable->mollieCustomer->mollie_mandate_id,
             'webhookUrl'=>route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $this->id]),
