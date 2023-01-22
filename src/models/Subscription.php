@@ -27,6 +27,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Event;
 use PTM\MollieInterface\Events\SubscriptionCancelled;
+use PTM\MollieInterface\Events\SubscriptionChange;
 use PTM\MollieInterface\traits\PaymentMethodString;
 
 class Subscription extends \Illuminate\Database\Eloquent\Model
@@ -129,6 +130,17 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
             'ends_at'=>$force ? now() : $this->cycle_ends_at
         ]);
         Event::dispatch(new SubscriptionCancelled($this));
+    }
+
+    public function changePlan(Plan$plan){
+        if ($this->mollie_subscription_id){
+            $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->mollie_subscription_id);
+            $mollieSubscription->amount = $this->money_to_mollie_array($plan->mandatedAmountIncl($this->getInterval(), $this->tax_percentage));
+            $mollieSubscription->update();
+        }
+        $this->plan_id = $plan->id;
+        $this->save();
+        Event::dispatch(new SubscriptionChange($this));
     }
 
     public function toMollie($startNow=false){
