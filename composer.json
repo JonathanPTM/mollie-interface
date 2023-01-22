@@ -1,0 +1,35 @@
+{
+    "name": "ptmdevelopment/mollie_interface",
+    "description": "A mollie api wrapper for subscriptions and events.",
+    "authors": [
+        {
+            "name": "Jonathan Peetoom",
+            "email": "jonathan@ptmdevelopment.net"
+        }
+    ],
+    "require": {
+        "mollie/mollie-api-php": "^2.27",
+        "illuminate/support": "^8.0|^9.0",
+        "illuminate/database": "^8.0|^9.0",
+        "nesbot/carbon": "^2.31",
+        "mollie/laravel-mollie": "^2.21",
+        "moneyphp/money": "^4.1"
+    }
+    ,
+    "require-dev": {
+        "roave/security-advisories": "dev-latest",
+        "laravel/framework": "^8.0|^9.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "PTM\\MollieInterface\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "PTM\\MollieInterface\\MollieInterfaceServiceProvider"
+            ]
+        }
+    }
+}
