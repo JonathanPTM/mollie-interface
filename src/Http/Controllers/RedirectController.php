@@ -33,7 +33,6 @@ class RedirectController extends Controller
         if (!$subscription){
             return response()->json('Something went wrong! Subscription payment was not found.', 404);
         }
-        ddd($subscription);
-        return 'ji';
+        return response()->json('The subscription has been created successfully. If can now redirect back home to the site index.');
     }
 }

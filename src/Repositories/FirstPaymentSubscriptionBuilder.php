@@ -46,7 +46,7 @@ class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder
         $this->taxPercentage = 21;
         $this->interval = SubscriptionInterval::MONTHLY;
         $this->sequenceType = SequenceType::SEQUENCETYPE_FIRST;
-        $this->redirectUrl = url('');
+        $this->redirectUrl = null;
         if ($plan) $this->plan = $plan;
     }
 
