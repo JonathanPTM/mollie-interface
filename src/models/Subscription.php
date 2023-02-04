@@ -79,11 +79,22 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
      * Retrieve an Order by the Mollie Payment id.
      *
      * @param $id
-     * @return static
+     * @return Subscription|null
+     */
+    public static function findBySubscriptionId($id): ?self
+    {
+        return static::where('mollie_subscription_id', $id)->first();
+    }
+
+    /**
+     * Retrieve an Order by the Mollie Payment id.
+     *
+     * @param $id
+     * @return Subscription|null
      */
     public static function findByPaymentId($id): ?self
     {
-        return static::where('mollie_subscription_id', $id)->first();
+        return self::findBySubscriptionId($id);
     }
 
     /**
