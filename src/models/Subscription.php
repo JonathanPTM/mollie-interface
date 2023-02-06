@@ -143,6 +143,21 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         Event::dispatch(new SubscriptionCancelled($this));
     }
 
+    public function changeInterval(SubscriptionInterval $interval, $resetStartCycle=false){
+        if ($this->mollie_subscription_id){
+            $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->mollie_subscription_id);
+            $mollieSubscription->interval = $interval->toMollie();
+            if ($resetStartCycle){
+                $mollieSubscription->startDate = now()->format('Y-m-d');
+            }
+            $mollieSubscription->update();
+        }
+        $this->update([
+            'cycle_started_at' => $resetStartCycle ? now() : $this->cycle_started_at,
+            'cycle_ends_at' => $interval->nextDate($resetStartCycle ? now() : $this->cycle_started_at)
+        ]);
+    }
+
     public function changePlan(Plan$plan){
         if ($this->mollie_subscription_id){
             $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->mollie_subscription_id);

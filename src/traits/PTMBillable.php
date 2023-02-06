@@ -42,6 +42,42 @@ trait PTMBillable
     }
 
     /**
+     * @param $identifier
+     * @return bool
+     */
+    public function isSubscribed($identifier): bool
+    {
+        return $this->subscriptions()->where('subscribed_on', $identifier)->exists();
+    }
+
+    /**
+     * @param Plan $plan
+     * @param $subscribed_on
+     * @param SubscriptionInterval $interval
+     * @param $resetStartCycle
+     * @return SubscriptionBuilder|Subscription
+     */
+    public function updateOrSubscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, $resetStartCycle = true)
+    {
+        $subscription = $this->getSubscription($subscribed_on);
+        if (!$subscription){
+            // Return new builder.
+            return $this->subscribe($plan, $subscribed_on, $interval);
+        }
+
+        // Check plan before changing.
+        if ($subscription->plan_id !== $plan->id){
+            $subscription->changePlan($plan);
+        }
+
+        // Check interval before changing.
+        if ($subscription->getInterval()->getLetter() !== $interval->getLetter()){
+            $subscription->changeInterval($interval, $resetStartCycle);
+        }
+        return $subscription;
+    }
+
+    /**
      * Get all subscriptions associated with this model
      *
      * @return \Illuminate\Database\Eloquent\Relations\MorphMany

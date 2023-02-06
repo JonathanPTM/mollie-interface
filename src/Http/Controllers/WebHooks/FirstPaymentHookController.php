@@ -31,6 +31,7 @@ use PTM\MollieInterface\Events\FirstPaymentPaid;
 use PTM\MollieInterface\Events\PaymentPaid;
 use PTM\MollieInterface\Http\Controllers\Controller;
 use PTM\MollieInterface\models\Payment;
+use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\Repositories\Handlers\FirstPaymentHandler;
 
 class FirstPaymentHookController extends WebhookController
@@ -47,6 +48,9 @@ class FirstPaymentHookController extends WebhookController
             $payment->update();
             Event::dispatch(new PaymentPaid($payment, $order));
         } else {
+            if (!$payment->isOpen() && isset($payment->metadata->subscription)){
+                Subscription::find($payment->metadata->subscription)->delete();
+            }
             Event::dispatch(new FirstPaymentFailed($payment));
         }
         return new Response(null, 200);
