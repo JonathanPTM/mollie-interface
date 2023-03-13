@@ -141,6 +141,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
             'ends_at'=>$force ? now() : $this->cycle_ends_at
         ]);
         Event::dispatch(new SubscriptionCancelled($this));
+        return $this;
     }
 
     public function changeInterval(SubscriptionInterval $interval, $resetStartCycle=false){
@@ -156,6 +157,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
             'cycle_started_at' => $resetStartCycle ? now() : $this->cycle_started_at,
             'cycle_ends_at' => $interval->nextDate($resetStartCycle ? now() : $this->cycle_started_at)
         ]);
+        return $this;
     }
 
     public function changePlan(Plan$plan){
@@ -167,6 +169,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         $this->plan_id = $plan->id;
         $this->save();
         Event::dispatch(new SubscriptionChange($this));
+        return $this;
     }
 
     public function toMollie($startNow=false){
