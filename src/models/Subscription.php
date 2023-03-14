@@ -122,11 +122,13 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     {
         if (!$this->cycle_started_at || !$this->cycle_ends_at) return SubscriptionInterval::MONTHLY;
         try {
-            return SubscriptionInterval::from(Carbon::parse($this->cycle_started_at)->floorMonth()->diffInMonths(Carbon::parse($this->cycle_ends_at)->floorMonth()));
+            $x = Carbon::parse($this->cycle_started_at)->floorMonth()->diffInMonths(Carbon::parse($this->cycle_ends_at)->floorMonth());
+            $interval = SubscriptionInterval::tryFrom($x);
         } catch (Exception$exception) {
             \Illuminate\Support\Facades\Log::error($exception);
             return SubscriptionInterval::MONTHLY;
         }
+        return $interval ?? SubscriptionInterval::MONTHLY;
     }
 
     public function endSubscription(bool $force=false){
