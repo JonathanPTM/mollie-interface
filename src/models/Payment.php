@@ -82,7 +82,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
             'owner_type' => $owner->getMorphClass(),
             'owner_id' => $owner->getKey(),
             'currency' => $payment->amount->currency,
-            'amount' => (float)self::mollie_object_to_money($payment->amount)->getAmount(),
+            'amount' => (float)$payment->amount->value,
             'amount_refunded' => (float)$amountRefunded->getAmount(),
             'amount_charged_back' => (float)$amountChargedBack->getAmount(),
             'mollie_mandate_id' => $payment->mandateId,
