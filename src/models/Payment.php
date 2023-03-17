@@ -67,12 +67,12 @@ class Payment extends \Illuminate\Database\Eloquent\Model
     public static function makeFromMolliePayment(MolliePayment $payment, Model $owner, array $actions = [], array $overrides = []): self
     {
         $amountChargedBack = $payment->amountChargedBack
-            ? self::mollie_object_to_money($payment->amountChargedBack)
-            : new Money(0, new Currency($payment->amount->currency));
+            ? (float)$payment->amountChargedBack->value
+            : 0.0;
 
         $amountRefunded = $payment->amountRefunded
-            ? self::mollie_object_to_money($payment->amountRefunded)
-            : new Money(0, new Currency($payment->amount->currency));
+            ? (float)$payment->amountRefunded->value
+            : 0.0;
 
         $localActions = !empty($actions) ? $actions : $payment->metadata->actions ?? null;
 
@@ -83,8 +83,8 @@ class Payment extends \Illuminate\Database\Eloquent\Model
             'owner_id' => $owner->getKey(),
             'currency' => $payment->amount->currency,
             'amount' => (float)$payment->amount->value,
-            'amount_refunded' => (float)$amountRefunded->getAmount(),
-            'amount_charged_back' => (float)$amountChargedBack->getAmount(),
+            'amount_refunded' => $amountRefunded,
+            'amount_charged_back' => $amountChargedBack,
             'mollie_mandate_id' => $payment->mandateId,
             'first_payment_actions' => $localActions,
         ], $overrides));
