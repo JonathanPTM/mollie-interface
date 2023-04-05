@@ -49,7 +49,9 @@ class FirstPaymentHookController extends WebhookController
             Event::dispatch(new PaymentPaid($payment, $order));
         } else {
             if (!$payment->isOpen() && isset($payment->metadata->subscription)){
-                Subscription::find($payment->metadata->subscription)->delete();
+                if ($subscription = Subscription::find($payment->metadata->subscription)) {
+                    $subscription->delete();
+                }
             }
             Event::dispatch(new FirstPaymentFailed($payment));
         }
