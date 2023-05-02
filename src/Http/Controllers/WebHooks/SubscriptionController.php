@@ -25,10 +25,13 @@ namespace PTM\MollieInterface\Http\Controllers\WebHooks;
 
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
 use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\Events\PaymentPaid;
+use PTM\MollieInterface\Events\SubscriptionConfirmed;
 use PTM\MollieInterface\Events\SubscriptionPaymentFailed;
 use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Subscription;
@@ -41,12 +44,12 @@ class SubscriptionController extends WebhookController
         if (!$payment){
             return new Response(null, 404);
         }
-        if (!isset($payment->subscriptionId) || !isset($payment->customerId)) {
-            return response()->setStatusCode(504, 'Subscription identifier parameter not found.');
+        if ((!isset($payment->subscriptionId) || !isset($payment->customerId)) && (!$request->has('fcp') || $request->get('fcp') !== 'true')) {
+            return \response('Subscription identifier parameter not found.', 504);
         }
+        DB::beginTransaction();
         $mollieSubscription = null;
         if (!$request->has('fcp') || $request->get('fcp') !== 'true') {
-
             $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
             /**
              * @var $localSubscription Subscription
@@ -54,15 +57,16 @@ class SubscriptionController extends WebhookController
             $localSubscription = Subscription::where('mollie_subscription_id', $mollieSubscription->id)->first();
         } else {
             $localSubscription = Subscription::find($request->get('subscription_id'));
+            if ($localSubscription->mollie_subscription_id) $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $localSubscription->mollie_subscription_id);
         }
         // Make payment
         $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
 
         if ($payment->isPaid()){
-            if ($request->has('fcp') && $request->get('fcp') === 'true'){
+            if ($request->has('fcp') && $request->get('fcp') === 'true' && !$mollieSubscription){
                 // Subscription needs to be created!
-                (new MollieSubscriptionBuilder($localSubscription, $localSubscription->billable))->execute();
-                $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
+                $mollieSubscription = (new MollieSubscriptionBuilder($localSubscription, $localSubscription->billable))->execute();
+                Event::dispatch(new SubscriptionConfirmed($localSubscription));
             }
             // Update subscription cycle...
             $cycle = $localSubscription->getCycle();
@@ -77,6 +81,7 @@ class SubscriptionController extends WebhookController
         } else {
             Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, $mollieSubscription));
         }
+        DB::commit();
         return new \Illuminate\Http\Response(null, 200);
     }
 }
