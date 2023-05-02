@@ -79,6 +79,9 @@ class SubscriptionController extends WebhookController
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
             $payment->update();
         } else {
+            if ($request->has('fcp') && $request->get('fcp') === 'true'){
+                if ($localSubscription && !$mollieSubscription) $localSubscription->delete();
+            }
             Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, $mollieSubscription));
         }
         DB::commit();

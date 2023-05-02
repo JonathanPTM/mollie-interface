@@ -93,7 +93,7 @@ trait PTMBillable
      */
     public function getSubscription($identifier)
     {
-        return $this->subscriptions()->firstWhere('subscribed_on', $identifier);
+        return $this->subscriptions()->orderByDesc('created_at')->firstWhere('subscribed_on', $identifier);
     }
 
 
