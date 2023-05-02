@@ -26,11 +26,14 @@ namespace PTM\MollieInterface\Repositories;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Mollie\Api\Types\SequenceType;
+use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\SubscriptionInterval;
+use PTM\MollieInterface\traits\PaymentBuilder;
 
 class SubscriptionBuilder implements \PTM\MollieInterface\contracts\SubscriptionBuilder
 {
+    use PaymentBuilder;
     private $thread;
     public function __construct(Model $owner, float $total, string $description, array $options = [], ?Plan $plan = null)
     {
@@ -40,7 +43,8 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
         $this->description = $description;
         $this->taxPercentage = 21;
         $this->interval = SubscriptionInterval::MONTHLY;
-        $this->sequenceType = SequenceType::SEQUENCETYPE_FIRST;
+        $this->sequenceType = SequenceType::SEQUENCETYPE_ONEOFF;
+        $this->forceConfirmationPayment = false;
         $this->redirectUrl = url('');
         if ($plan) $this->plan = $plan;
     }
@@ -57,6 +61,19 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
         }
         // Create subscription entry
         $subscription = $this->buildSubscription();
+
+        // Check if confirmation payment is required
+        if ($this->forceConfirmationPayment){
+            // Get payment variables
+            $payload = $this->getMolliePayload();
+            // Create mollie payment
+            $this->molliePayment = Mollie::api()->payments()->create($payload);
+            // Connect payment to the subscription
+            $subscription->payments()->create($this->getPaymentPayload());
+            // Return payment object
+            return $this->molliePayment;
+        }
+        // Or just create subscription using mandate
         return (new MollieSubscriptionBuilder($subscription, $this->owner))->execute();
     }
 
@@ -70,7 +87,7 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
             'cycle_ends_at' => $this->interval->nextDate()
         ]);
         $this->subscriptionID = $subscription->id;
-        $this->webhookUrl = route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $subscription->id]);
+        $this->webhookUrl = route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $subscription->id, 'fcp'=>$this->forceConfirmationPayment ? 'true' : 'false']);
         return $subscription;
     }
 
@@ -100,6 +117,12 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
     public function setOptions($options)
     {
         $this->options = $options;
+        return $this;
+    }
+
+    public function forceConfirmation(bool $enabled)
+    {
+        $this->forceConfirmationPayment = $enabled;
         return $this;
     }
 

@@ -32,6 +32,7 @@ use PTM\MollieInterface\Events\PaymentPaid;
 use PTM\MollieInterface\Events\SubscriptionPaymentFailed;
 use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Subscription;
+use PTM\MollieInterface\Repositories\MollieSubscriptionBuilder;
 
 class SubscriptionController extends WebhookController
 {
@@ -43,15 +44,26 @@ class SubscriptionController extends WebhookController
         if (!isset($payment->subscriptionId) || !isset($payment->customerId)) {
             return response()->setStatusCode(504, 'Subscription identifier parameter not found.');
         }
-        $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
-        /**
-         * @var $localSubscription Subscription
-         */
-        $localSubscription = Subscription::where('mollie_subscription_id', $mollieSubscription->id)->first();
+        $mollieSubscription = null;
+        if (!$request->has('fcp') || $request->get('fcp') !== 'true') {
+
+            $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
+            /**
+             * @var $localSubscription Subscription
+             */
+            $localSubscription = Subscription::where('mollie_subscription_id', $mollieSubscription->id)->first();
+        } else {
+            $localSubscription = Subscription::find($request->get('subscription_id'));
+        }
         // Make payment
         $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
 
         if ($payment->isPaid()){
+            if ($request->has('fcp') && $request->get('fcp') === 'true'){
+                // Subscription needs to be created!
+                (new MollieSubscriptionBuilder($localSubscription, $localSubscription->billable))->execute();
+                $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
+            }
             // Update subscription cycle...
             $cycle = $localSubscription->getCycle();
             $payed_at = Carbon::parse($payment->paidAt);

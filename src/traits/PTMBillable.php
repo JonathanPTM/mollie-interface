@@ -33,10 +33,10 @@ trait PTMBillable
 {
     use isMollieCustomer;
 
-    public function subscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY): SubscriptionBuilder
+    public function subscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, $forceConfirmationPayment=false): SubscriptionBuilder
     {
         if (!empty($this->mollieCustomer) && !empty($this->mollieCustomer->mollie_mandate_id)) {
-            return \PTM\MollieInterface\Repositories\SubscriptionBuilder::fromPlan($this, $plan, [])->subscribedOn($subscribed_on);
+            return \PTM\MollieInterface\Repositories\SubscriptionBuilder::fromPlan($this, $plan, [])->subscribedOn($subscribed_on)->forceConfirmation($forceConfirmationPayment);
         }
         return FirstPaymentSubscriptionBuilder::fromPlan($this, $plan, [])->subscribedOn($subscribed_on);
     }
@@ -54,15 +54,15 @@ trait PTMBillable
      * @param Plan $plan
      * @param $subscribed_on
      * @param SubscriptionInterval $interval
-     * @param $resetStartCycle
+     * @param bool $resetStartCycle
      * @return SubscriptionBuilder|Subscription
      */
-    public function updateOrSubscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, $resetStartCycle = true)
+    public function updateOrSubscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, bool $resetStartCycle = true, $forceConfirmationPayment=false)
     {
         $subscription = $this->getSubscription($subscribed_on);
         if (!$subscription){
             // Return new builder.
-            return $this->subscribe($plan, $subscribed_on, $interval);
+            return $this->subscribe($plan, $subscribed_on, $interval, $forceConfirmationPayment);
         }
 
         // Check plan before changing.
