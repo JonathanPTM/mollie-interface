@@ -60,7 +60,7 @@ trait PTMBillable
     public function updateOrSubscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, bool $resetStartCycle = true, $forceConfirmationPayment=false)
     {
         $subscription = $this->getSubscription($subscribed_on);
-        if (!$subscription){
+        if (!$subscription || $subscription->ends_at){
             // Return new builder.
             return $this->subscribe($plan, $subscribed_on, $interval, $forceConfirmationPayment);
         }
