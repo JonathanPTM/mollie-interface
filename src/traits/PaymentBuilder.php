@@ -24,6 +24,7 @@
 namespace PTM\MollieInterface\traits;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Mollie\Api\Types\SequenceType;
 use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\SubscriptionInterval;
@@ -130,6 +131,7 @@ trait PaymentBuilder
      */
     public function getMolliePayload(): array
     {
+        Log::debug("Mollie payload of: $this->total.");
         return array_filter(array_merge([
             'sequenceType' => $this->sequenceType,
             'method' => $this->method,

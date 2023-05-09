@@ -25,6 +25,7 @@ namespace PTM\MollieInterface\models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class Plan extends Model
 {
@@ -88,7 +89,9 @@ class Plan extends Model
         } else {
             $percentage = (1 + ($tax/100) );
         }
-        return $excluded*$percentage;
+        $result = $excluded*$percentage;
+        Log::debug("Calculated TAX: factor of $percentage. Origin: $excluded. Output: $result.");
+        return $result;
     }
 
 }

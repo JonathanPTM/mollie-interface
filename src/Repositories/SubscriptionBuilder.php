@@ -129,7 +129,7 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
     public function setInterval(SubscriptionInterval $interval)
     {
         $this->interval = $interval;
-        if ($this->plan) $this->total = $this->plan->mandatedAmount($interval);
+        if ($this->plan) $this->total = $this->plan->mandatedAmountIncl($interval, $this->taxPercentage ?? env('SUBSCRIPTION_TAX', 21));
         return $this;
     }
 
