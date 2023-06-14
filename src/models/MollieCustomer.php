@@ -46,10 +46,18 @@ class MollieCustomer extends Model
      * @var array
      */
     protected $fillable = [
+        'billable_type',
+        'billable_id',
         'mollie_customer_id',
         'mollie_mandate_id',
+        'merge_subscriptions',
+        'mollie_subscriptions',
         'trial_ends_at',
         'extra_billing_information'
+    ];
+
+    protected $casts = [
+        'mollie_subscriptions'=>'array'
     ];
 
     /**
@@ -58,5 +66,12 @@ class MollieCustomer extends Model
     public function billable()
     {
         return $this->morphTo();
+    }
+
+    public function getMergedSubscription($offset=0): ?\Mollie\Api\Resources\Subscription
+    {
+        $id = $this->mollie_subscriptions[$offset];
+        if (!$id) return null;
+        return mollie()->customers()->get($this->mollie_customer_id)->getSubscription($id);
     }
 }

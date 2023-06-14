@@ -46,6 +46,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         'plan_id',
         'mollie_subscription_id',
         'tax_percentage',
+        'is_merged',
         'ends_at',
         'cycle_started_at',
         'cycle_ends_at'

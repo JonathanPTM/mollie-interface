@@ -33,6 +33,7 @@ use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\Events\PaymentPaid;
 use PTM\MollieInterface\Events\SubscriptionConfirmed;
 use PTM\MollieInterface\Events\SubscriptionPaymentFailed;
+use PTM\MollieInterface\models\MollieCustomer;
 use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\Repositories\MollieSubscriptionBuilder;
@@ -40,6 +41,7 @@ use PTM\MollieInterface\Repositories\MollieSubscriptionBuilder;
 class SubscriptionController extends WebhookController
 {
     public function hooked(Request $request){
+        Log::debug("Heeft dit er mee te maken? ".$request->url());
         $payment = $this->getMolliePaymentById($request->get('id'));
         if (!$payment){
             return new Response(null, 404);
@@ -57,10 +59,26 @@ class SubscriptionController extends WebhookController
             $localSubscription = Subscription::where('mollie_subscription_id', $mollieSubscription->id)->first();
         } else {
             $localSubscription = Subscription::find($request->get('subscription_id'));
-            if ($localSubscription->mollie_subscription_id) $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $localSubscription->mollie_subscription_id);
+            if ($localSubscription && $localSubscription->mollie_subscription_id) $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $localSubscription->mollie_subscription_id);
         }
-        // Make payment
-        $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
+
+        // Merged subscriptions handler...
+        if ($request->has('merged')){
+            $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
+            $customer = MollieCustomer::where('billable_id', $request->get('merged'))->first();
+            // Make payment
+            $localPayment = Payment::makeFromMolliePayment($payment, $customer);
+            if ($payment->isPaid()){
+                Event::dispatch(new PaymentPaid($payment, $localPayment));
+                $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
+                $payment->update();
+                DB::commit();
+                return response()->json(['success'=>true,'message'=>'Merged subscription has been done ;)']);
+            }
+        } else {
+            // Make payment
+            $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
+        }
 
         if ($payment->isPaid()){
             if ($request->has('fcp') && $request->get('fcp') === 'true' && !$mollieSubscription){
@@ -71,9 +89,11 @@ class SubscriptionController extends WebhookController
             // Update subscription cycle...
             $cycle = $localSubscription->getCycle();
             $payed_at = Carbon::parse($payment->paidAt);
+            $next = $cycle->nextDate($payed_at);
+            Log::debug("SubscriptionController:76 Subscription({$localSubscription->id}) cycle change: {$payed_at->toString()} + {$next->toString()}");
             $localSubscription->update([
                 'cycle_started_at'=>$payed_at,
-                'cycle_ends_at'=>$cycle->nextDate($payed_at)
+                'cycle_ends_at'=>$next
             ]);
             Event::dispatch(new PaymentPaid($payment, $localPayment, $mollieSubscription));
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
