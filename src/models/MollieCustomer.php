@@ -40,7 +40,7 @@ class MollieCustomer extends Model
     public $incrementing = false;
 
     protected $primaryKey = 'billable_id';
-    
+
     /**
      * The attributes that are mass assignable.
      *

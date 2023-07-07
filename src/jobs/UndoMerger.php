@@ -75,7 +75,7 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
         /**
          * @var ?\Mollie\Api\Resources\Subscription $mergedSubscription
          */
-        $mergedSubscription = $this->customer->getMergedSubscriptionId();
+        $mergedSubscription = $this->customer->getMergedSubscription();
         if (!$mergedSubscription) return ['status'=>false,'message'=>'No merged subscription was found.','total'=>0];
         $mollieCustomer = mollie()->customers()->get($this->customer->mollie_customer_id);
         if (!$mollieCustomer) return ['status'=>false,'message'=>'No payment customer was found.','total'=>0];
@@ -123,7 +123,9 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
     public function handle()
     {
         $billable = $this->customer->billable;
+        DB::beginTransaction();
         $result = $this->excecutor($billable);
+        DB::commit();
         $this->setOutput($result);
 
 

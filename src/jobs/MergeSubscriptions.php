@@ -88,11 +88,13 @@ class MergeSubscriptions implements ShouldQueue
         /**
          * @var ?\Mollie\Api\Resources\Subscription $mergedSubscription
          */
-        $mergedSubscription = $this->customer->getMergedSubscriptionId();
+        $mergedSubscription = $this->customer->getMergedSubscription();
         $mollieCustomer = mollie()->customers()->get($this->customer->mollie_customer_id);
 
         $total_sum = 0;
         $added = 0;
+
+        DB::beginTransaction();
 
         /**
          * @var Subscription $subscription
@@ -109,6 +111,8 @@ class MergeSubscriptions implements ShouldQueue
             ]);
             $added++;
         }
+
+        DB::commit();
 
         if ($total_sum <= 0) {
             Log::info("Not creating a merged subscription update because total_sum is 0. ({$this->customer->billable_id})");
