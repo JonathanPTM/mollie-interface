@@ -54,6 +54,17 @@ enum SubscriptionInterval: int
         };
     }
 
+    public static function fromMollie($string): SubscriptionInterval
+    {
+        return match ($string) {
+            '1 days' => SubscriptionInterval::DAILY,
+            '1 month'=> SubscriptionInterval::MONTHLY,
+            '3 months'=> SubscriptionInterval::QUARTERLY,
+            '6 months'=> SubscriptionInterval::SEMIYEARLY,
+            '12 months'=> SubscriptionInterval::YEARLY
+        };
+    }
+
     public function getLetter(): string
     {
         return match ($this) {

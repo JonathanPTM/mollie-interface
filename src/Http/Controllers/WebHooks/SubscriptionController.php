@@ -91,10 +91,7 @@ class SubscriptionController extends WebhookController
             $payed_at = Carbon::parse($payment->paidAt);
             $next = $cycle->nextDate($payed_at);
             Log::debug("SubscriptionController:76 Subscription({$localSubscription->id}) cycle change: {$payed_at->toString()} + {$next->toString()}");
-            $localSubscription->update([
-                'cycle_started_at'=>$payed_at,
-                'cycle_ends_at'=>$next
-            ]);
+            $localSubscription->updateCycle($payed_at, $mollieSubscription->nextPaymentDate);
             Event::dispatch(new PaymentPaid($payment, $localPayment, $mollieSubscription));
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
             $payment->update();

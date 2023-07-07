@@ -21,6 +21,7 @@ class CreatePtmSubscriptionsTable extends Migration
             $table->string('mollie_subscription_id')->nullable();
             $table->decimal('tax_percentage', 6, 4)->default(0);
             $table->datetime('ends_at')->nullable();
+            $table->integer('cycle')->default(1);
             $table->datetime('cycle_started_at');
             $table->datetime('cycle_ends_at')->nullable();
             $table->timestamps();

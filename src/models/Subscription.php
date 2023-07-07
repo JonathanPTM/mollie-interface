@@ -26,6 +26,7 @@ namespace PTM\MollieInterface\models;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use PTM\MollieInterface\Events\SubscriptionCancelled;
 use PTM\MollieInterface\Events\SubscriptionChange;
 use PTM\MollieInterface\traits\PaymentMethodString;
@@ -48,6 +49,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         'tax_percentage',
         'is_merged',
         'ends_at',
+        'cycle',
         'cycle_started_at',
         'cycle_ends_at'
     ];
@@ -119,12 +121,30 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     public function getCycle(){
         return $this->getInterval();
     }
+
+    public function updateCycle($last_payment, $next_payment=null){
+        if (!$next_payment){
+            $this->update([
+                'cycle_started_at'=>$last_payment,
+                'cycle_ends_at'=>$this->getCycle()->nextDate($last_payment)
+            ]);
+        }
+        $this->update([
+            'cycle_started_at'=>$last_payment,
+            'cycle_ends_at'=>$next_payment
+        ]);
+    }
     public function getInterval()
     {
         if (!$this->cycle_started_at || !$this->cycle_ends_at) return SubscriptionInterval::MONTHLY;
+        if ($this->cycle) return SubscriptionInterval::from($this->cycle);
         try {
-            $x = Carbon::parse($this->cycle_started_at)->floorMonth()->diffInMonths(Carbon::parse($this->cycle_ends_at)->floorMonth());
-            $interval = SubscriptionInterval::tryFrom($x);
+            $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->mollie_subscription_id);
+            $interval = SubscriptionInterval::fromMollie($mollieSubscription->interval);
+            $this->update([
+                'cycle'=>$interval->value
+            ]);
+            Log::debug("Update cycle!");
         } catch (Exception$exception) {
             \Illuminate\Support\Facades\Log::error($exception);
             return SubscriptionInterval::MONTHLY;
@@ -157,6 +177,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
             $mollieSubscription->update();
         }
         $this->update([
+            'cycle' => $interval->value,
             'cycle_started_at' => $resetStartCycle ? now() : $this->cycle_started_at,
             'cycle_ends_at' => $interval->nextDate($resetStartCycle ? now() : $this->cycle_started_at)
         ]);
