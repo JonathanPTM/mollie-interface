@@ -122,7 +122,11 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         return $this->getInterval();
     }
 
-    public function updateCycle($last_payment, $next_payment=null){
+    public function updateCycle($last_payment=null, $next_payment=null){
+        if (!$last_payment && !$next_payment) throw new Exception("Last payment or next payment has to be given!");
+        if (!$last_payment){
+            $last_payment = $this->getCycle()->previousDate($next_payment);
+        }
         if (!$next_payment){
             $this->update([
                 'cycle_started_at'=>$last_payment,

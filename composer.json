@@ -15,7 +15,8 @@
         "illuminate/database": "^8.0|^9.0",
         "nesbot/carbon": "^2.31",
         "mollie/laravel-mollie": "^2.19.1|^2.20|^2.21",
-        "moneyphp/money": "^3.3|^4.0|^4.1"
+        "moneyphp/money": "^3.3|^4.0|^4.1",
+        "imtigger/laravel-job-status": "^1.2"
     }
     ,
     "require-dev": {

@@ -25,22 +25,41 @@ namespace PTM\MollieInterface\jobs;
 
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Imtigger\LaravelJobStatus\Trackable;
 use Mollie\Api\Endpoints\CustomerEndpoint;
 use PTM\MollieInterface\models\MollieCustomer;
 use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\models\SubscriptionInterval;
+use PTM\MollieInterface\Repositories\SubscriptionBuilder;
 use PTM\MollieInterface\traits\PaymentMethodString;
 
-class UndoMerger implements ShouldQueue
+class UndoMerger implements ShouldQueue, ShouldBeUnique
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, PaymentMethodString;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, PaymentMethodString, Trackable;
     public $customer;
+
+    /**
+     * The number of seconds after which the job's unique lock will be released.
+     *
+     * @var int
+     */
+    public $uniqueFor = 3600;
+
+    /**
+     * The unique ID of the job.
+     */
+    public function uniqueId(): string
+    {
+        return $this->customer->billable->id;
+    }
+
     /**
      * Create a new job instance.
      *
@@ -49,6 +68,51 @@ class UndoMerger implements ShouldQueue
     public function __construct(MollieCustomer $customer)
     {
         $this->customer = $customer;
+        $this->setInput($customer->billable_id);
+    }
+
+    private function excecutor($billable){
+        /**
+         * @var ?\Mollie\Api\Resources\Subscription $mergedSubscription
+         */
+        $mergedSubscription = $this->customer->getMergedSubscriptionId();
+        if (!$mergedSubscription) return ['status'=>false,'message'=>'No merged subscription was found.','total'=>0];
+        $mollieCustomer = mollie()->customers()->get($this->customer->mollie_customer_id);
+        if (!$mollieCustomer) return ['status'=>false,'message'=>'No payment customer was found.','total'=>0];
+
+        if (!$mergedSubscription->isActive()) return ['status'=>false,'message'=>'No active merged subscription was found.','total'=>0];
+
+        $dismembered = 0;
+
+        /**
+         * @var Subscription $subscription
+         */
+        foreach ($billable->subscriptions as $subscription){
+            if (!$subscription->mollie_subscription_id) continue;
+            if (!$subscription->is_merged) continue;
+
+            $mollieSubscription = $mollieCustomer->getSubscription($subscription->mollie_subscription_id);
+            if (!$mollieSubscription->isActive()){
+                // Recreate subscription
+                $next = Carbon::parse($mergedSubscription->nextPaymentDate);
+                $subscription->updateCycle(null, $next);
+                $new_instance =  $mollieCustomer->createSubscription($subscription->toMollie());
+                $subscription->update([
+                    'mollie_subscription_id'=>$new_instance->id
+                ]);
+            }
+            $subscription->is_merged = false;
+            $subscription->save();
+            $dismembered++;
+        }
+
+        if ($dismembered <= 0) {
+            Log::info("No subscriptions were unmerged. ({$this->customer->billable_id})");
+            return ['status'=>false,'message'=>'No subscriptions were found to be unmerged','total'=>$dismembered];
+        }
+
+        if ($mergedSubscription->isActive()) $mergedSubscription->cancel();
+        return ['status'=>true,'message'=>null,'total'=>$dismembered];
     }
 
     /**
@@ -59,45 +123,9 @@ class UndoMerger implements ShouldQueue
     public function handle()
     {
         $billable = $this->customer->billable;
+        $result = $this->excecutor($billable);
+        $this->setOutput($result);
 
-        /**
-         * @var ?\Mollie\Api\Resources\Subscription $mergedSubscription
-         */
-        $mergedSubscription = $this->customer->getMergedSubscriptionId();
-        $mollieCustomer = mollie()->customers()->get($this->customer->mollie_customer_id);
 
-        $total_sum = 0;
-        $added = 0;
-
-        /**
-         * @var Subscription $subscription
-         */
-        foreach ($billable->subscriptions as $subscription){
-            if (!$subscription->mollie_subscription_id) continue;
-            $total_sum += $subscription->plan->mandatedAmountIncl();
-            $mollieSubscription = $mollieCustomer->getSubscription($subscription->mollie_subscription_id);
-            if ($mollieSubscription->isActive()){
-                $mollieSubscription->cancel();
-            }
-            $subscription->update([
-                'is_merged'=>true
-            ]);
-            $added++;
-        }
-
-        if ($total_sum <= 0) {
-            Log::info("Not creating a merged subscription update because total_sum is 0. ({$this->customer->billable_id})");
-            return;
-        }
-
-        if (!$mergedSubscription) {
-            $mergedSubscription = $this->buildMergedSubscription($total_sum, $mollieCustomer);
-            $this->customer->mollie_subscriptions[] = $mergedSubscription->id;
-            $this->customer->save();
-        } else {
-            $mergedSubscription->amount =  $total_sum;
-        }
-        $mergedSubscription->description = "Samengevoegde subscriptions van klant, bevat {$added} subscriptions.";
-        $mergedSubscription->update();
     }
 }

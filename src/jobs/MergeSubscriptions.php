@@ -31,6 +31,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Imtigger\LaravelJobStatus\Trackable;
 use Mollie\Api\Endpoints\CustomerEndpoint;
 use PTM\MollieInterface\models\MollieCustomer;
 use PTM\MollieInterface\models\Subscription;
@@ -39,7 +40,7 @@ use PTM\MollieInterface\traits\PaymentMethodString;
 
 class MergeSubscriptions implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, PaymentMethodString;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, PaymentMethodString, Trackable;
     public $customer;
     /**
      * Create a new job instance.

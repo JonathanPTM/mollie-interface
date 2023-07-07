@@ -85,4 +85,13 @@ enum SubscriptionInterval: int
         if ($now) return $now->addMonths($this->value);
         return now()->addMonths($this->value);
     }
+
+    public function previousDate($now=null){
+        if ($this->getLetter() === 'd'){
+            if ($now) return $now->subDay();
+            return now()->subDay();
+        }
+        if ($now) return $now->subMonths($this->value);
+        return now()->subMonths($this->value);
+    }
 }
