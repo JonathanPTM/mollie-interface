@@ -50,6 +50,7 @@ class MergeSubscriptions implements ShouldQueue
     public function __construct(MollieCustomer $customer)
     {
         $this->customer = $customer;
+        $this->setInput(['billable_id'=>$customer->billable_id]);
     }
 
     private function buildMergedSubscription($total,$mollieCustomer):\Mollie\Api\Resources\Subscription{
@@ -102,7 +103,16 @@ class MergeSubscriptions implements ShouldQueue
         foreach ($billable->subscriptions as $subscription){
             if (!$subscription->mollie_subscription_id) continue;
             $total_sum += $subscription->plan->mandatedAmountIncl();
-            $mollieSubscription = $mollieCustomer->getSubscription($subscription->mollie_subscription_id);
+            $mollieSubscription = false;
+            try {
+                $mollieSubscription = $mollieCustomer->getSubscription($subscription->mollie_subscription_id);
+            } catch (\Exception$exception){
+                Log::error($exception);
+            }
+            if (!$mollieSubscription) {
+                Log::info("Subscription was no longer found on mollie ($subscription->mollie_subscription_id)");
+                continue;
+            }
             if ($mollieSubscription->isActive()){
                 $mollieSubscription->cancel();
             }
@@ -120,13 +130,18 @@ class MergeSubscriptions implements ShouldQueue
         }
 
         if (!$mergedSubscription) {
+            $ids = [];
             $mergedSubscription = $this->buildMergedSubscription($total_sum, $mollieCustomer);
-            $this->customer->mollie_subscriptions[] = $mergedSubscription->id;
+            $ids[] = $mergedSubscription->id;
+            $this->customer->mollie_subscriptions = $ids;
             $this->customer->save();
         } else {
             $mergedSubscription->amount =  $total_sum;
         }
         $mergedSubscription->description = "Samengevoegde subscriptions van klant, bevat {$added} subscriptions.";
+        $this->customer->update([
+            'merge_subscriptions'=>true
+        ]);
         $mergedSubscription->update();
     }
 }

@@ -68,7 +68,7 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
     public function __construct(MollieCustomer $customer)
     {
         $this->customer = $customer;
-        $this->setInput($customer->billable_id);
+        $this->setInput(['billable_id'=>$customer->billable_id]);
     }
 
     private function excecutor($billable){
@@ -125,6 +125,7 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
         $billable = $this->customer->billable;
         DB::beginTransaction();
         $result = $this->excecutor($billable);
+        Log::debug(json_encode($result));
         DB::commit();
         $this->setOutput($result);
 
