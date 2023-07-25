@@ -22,4 +22,5 @@
  */
 return [
     'webhook_prefix' => 'payment/webhook',
+    'tax' => 21
 ];

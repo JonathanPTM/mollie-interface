@@ -41,7 +41,7 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
         $this->total = $total;
         $this->options = $options;
         $this->description = $description;
-        $this->taxPercentage = 21;
+        $this->taxPercentage = config('ptm_subscription.tax', 21);
         $this->interval = SubscriptionInterval::MONTHLY;
         $this->sequenceType = SequenceType::SEQUENCETYPE_ONEOFF;
         $this->forceConfirmationPayment = false;
@@ -105,7 +105,9 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
 
     public function setTax(int $tax)
     {
+        $base_price = ($this->total / (100 + $this->taxPercentage)) * 100;
         $this->taxPercentage = ($tax > 1 ? $tax : ($tax > 0 ? ($tax * 100) : 0));
+        $this->total = $base_price * (1 + ($this->taxPercentage / 100));
         return $this;
     }
 
