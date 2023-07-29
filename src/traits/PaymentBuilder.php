@@ -155,7 +155,7 @@ trait PaymentBuilder
      *
      * @return null
      */
-    private function getPaymentPayload()
+    public function getPaymentPayload()
     {
         if (!$this->molliePayment) return null;
         return array_filter([

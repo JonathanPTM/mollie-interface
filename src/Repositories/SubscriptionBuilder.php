@@ -25,6 +25,7 @@ namespace PTM\MollieInterface\Repositories;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Mollie\Api\Types\SequenceType;
 use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\models\Plan;
@@ -106,6 +107,11 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
     public function setTax(int $tax)
     {
         $base_price = ($this->total / (100 + $this->taxPercentage)) * 100;
+        if ($tax === 0){
+            $this->taxPercentage = 0;
+            $this->total = $base_price;
+            return $this;
+        }
         $this->taxPercentage = ($tax > 1 ? $tax : ($tax > 0 ? ($tax * 100) : 0));
         $this->total = $base_price * (1 + ($this->taxPercentage / 100));
         return $this;
