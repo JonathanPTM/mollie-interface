@@ -134,7 +134,18 @@ class MergeSubscriptions implements ShouldQueue
         // If the amount is 0, then do nothing or cancel subscriptions.
         if ($total_sum <= 0) {
             Log::info("Not creating a merged subscription update because total_sum is 0. ({$this->customer->billable_id})");
-            // Todo: Cancel existing subscription...
+            $mIds = $this->customer->mollie_subscriptions;
+            // Delete old merged.
+            if (count($mIds) > 0){
+                foreach ($mIds as $mId){
+                    $notInIse = $mollieCustomer->getSubscription($mId);
+                    $notInIse->cancel();
+                }
+                $this->customer->update([
+                    'merge_subscriptions'=>false,
+                    'mollie_subscriptions'=>[]
+                ]);
+            }
             return;
         }
 
@@ -168,6 +179,7 @@ class MergeSubscriptions implements ShouldQueue
         }
 
         $offset = 0;
+        $in_use = [];
         $ids = $this->customer->mollie_subscriptions;
         foreach ($subscriptionAmounts as $subscriptionAmount){
             $mergedSubscription = $this->customer->getMergedSubscription($offset);
@@ -179,11 +191,19 @@ class MergeSubscriptions implements ShouldQueue
             }
             $mergedSubscription->description = "({$offset}) Samengevoegde subscriptions van klant, bevat {$added} subscriptions.";
             $mergedSubscription->update();
+            $in_use[] = $mergedSubscription->id;;
             $offset++;
+        }
+        foreach ($ids as $id){
+            if (!in_array($id, $in_use)){
+                // Delete old merged susbcriptions...
+                $notInIse = $mollieCustomer->getSubscription($id);
+                $notInIse->cancel();
+            }
         }
         $this->customer->update([
             'merge_subscriptions'=>true,
-            'mollie_subscriptions'=>$ids
+            'mollie_subscriptions'=>$in_use
         ]);
 
     }
