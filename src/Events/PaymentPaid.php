@@ -37,11 +37,15 @@ class PaymentPaid
     public $payment;
     public $record;
     public $subscription;
+    public $is_merged;
+    public $merge_offset;
 
-    public function __construct(Payment $payment, \PTM\MollieInterface\models\Payment $record, Subscription $subscription=null)
+    public function __construct(Payment $payment, \PTM\MollieInterface\models\Payment $record, Subscription $subscription=null, bool $isMerged=false, int $merge_offset = null)
     {
         $this->payment = $payment;
         $this->record = $record;
         $this->subscription = $subscription;
+        $this->is_merged = $isMerged;
+        $this->merge_offset = $merge_offset;
     }
 }

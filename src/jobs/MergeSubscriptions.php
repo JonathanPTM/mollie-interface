@@ -53,7 +53,7 @@ class MergeSubscriptions implements ShouldQueue
         $this->setInput(['billable_id'=>$customer->billable_id]);
     }
 
-    private function buildMergedSubscription($total,$mollieCustomer):\Mollie\Api\Resources\Subscription{
+    private function buildMergedSubscription($total,$mollieCustomer, $offset=false):\Mollie\Api\Resources\Subscription{
         $customer = $this->customer;
         $interval = SubscriptionInterval::MONTHLY;
         $date = Carbon::today();
@@ -64,11 +64,12 @@ class MergeSubscriptions implements ShouldQueue
             'amount'=>$this->money_to_mollie_array($total),
             'interval'=>$interval->toMollie(),
             'startDate'=> $date->format('Y-m-d'),
-            'description'=>"Samengevoegde subscriptions van klant.",
+            'description'=>$offset ? "({$offset}) Samengevoegde subscriptions van klant." : "Samengevoegde subscriptions van klant.",
             'mandateId'=>$customer->mollie_mandate_id,
-            'webhookUrl'=>route('ptm_mollie.webhook.payment.subscription', ['merged' => $customer->billable_id]),
+            'webhookUrl'=>route('ptm_mollie.webhook.payment.subscription', ['merged' => $customer->billable_id, 'offset'=>$offset]),
             'metadata'=>[
                 'merged_on'=>Carbon::now()->format("d-m-Y H:i:s"),
+                'offset'=>$offset,
                 'billable'=>[
                     'type'=>$customer->billable_type,
                     'id'=>$customer->billable_id
@@ -101,20 +102,26 @@ class MergeSubscriptions implements ShouldQueue
          * @var Subscription $subscription
          */
         foreach ($billable->subscriptions as $subscription){
-            if (!$subscription->mollie_subscription_id) continue;
+            // If a new container is added, should it first get a normal subscription?
+            // Because now it will get skipped if it didn't had a subscription.
+            if (!$subscription->ends_at) continue;
+
             $total_sum += $subscription->plan->mandatedAmountIncl();
             $mollieSubscription = false;
-            try {
-                $mollieSubscription = $mollieCustomer->getSubscription($subscription->mollie_subscription_id);
-            } catch (\Exception$exception){
-                Log::error($exception);
-            }
-            if (!$mollieSubscription) {
-                Log::info("Subscription was no longer found on mollie ($subscription->mollie_subscription_id)");
-                continue;
-            }
-            if ($mollieSubscription->isActive()){
-                $mollieSubscription->cancel();
+
+            if ($subscription->mollie_subscription_id){
+                // Handle excisting mollie subscriptions
+                try {
+                    $mollieSubscription = $mollieCustomer->getSubscription($subscription->mollie_subscription_id);
+                } catch (\Exception$exception){
+                    Log::error($exception);
+                }
+                if ($mollieSubscription) {
+                    if ($mollieSubscription->isActive()){
+                        // If the subscriptions is active, deactivate it.
+                        $mollieSubscription->cancel();
+                    }
+                }
             }
             $subscription->update([
                 'is_merged'=>true
@@ -124,24 +131,60 @@ class MergeSubscriptions implements ShouldQueue
 
         DB::commit();
 
+        // If the amount is 0, then do nothing or cancel subscriptions.
         if ($total_sum <= 0) {
             Log::info("Not creating a merged subscription update because total_sum is 0. ({$this->customer->billable_id})");
+            // Todo: Cancel existing subscription...
             return;
         }
 
-        if (!$mergedSubscription) {
-            $ids = [];
-            $mergedSubscription = $this->buildMergedSubscription($total_sum, $mollieCustomer);
-            $ids[] = $mergedSubscription->id;
-            $this->customer->mollie_subscriptions = $ids;
-            $this->customer->save();
-        } else {
-            $mergedSubscription->amount =  $total_sum;
+        // Check if there need to be multiple subscriptions
+        if ($total_sum < 990){
+            // If the $total_sum is under 990, then one subscription will suffice.
+            if (!$mergedSubscription) {
+                $ids = [];
+                $mergedSubscription = $this->buildMergedSubscription($total_sum, $mollieCustomer);
+                $ids[] = $mergedSubscription->id;
+                $this->customer->mollie_subscriptions = $ids;
+                $this->customer->save();
+            } else {
+                $mergedSubscription->amount =  $total_sum;
+            }
+            $mergedSubscription->description = "Samengevoegde subscriptions van klant, bevat {$added} subscriptions.";
+            $mergedSubscription->update();
+            $this->customer->update([
+                'merge_subscriptions'=>true
+            ]);
+            return;
         }
-        $mergedSubscription->description = "Samengevoegde subscriptions van klant, bevat {$added} subscriptions.";
+        // Else create multiple subscriptions for every 990 EUR.
+        $subscriptionAmounts = [];
+        $maximumGroupAmount = 990;
+        $amount = $total_sum;
+        while ($amount > 0) {
+            $groupAmount = min($amount, $maximumGroupAmount);
+            $subscriptionAmounts[] = $groupAmount;
+            $amount -= $groupAmount;
+        }
+
+        $offset = 0;
+        $ids = $this->customer->mollie_subscriptions;
+        foreach ($subscriptionAmounts as $subscriptionAmount){
+            $mergedSubscription = $this->customer->getMergedSubscription($offset);
+            if (!$mergedSubscription) {
+                $mergedSubscription = $this->buildMergedSubscription($subscriptionAmount, $mollieCustomer, $offset);
+                $ids[] = $mergedSubscription->id;
+            } else {
+                $mergedSubscription->amount =  $subscriptionAmount;
+            }
+            $mergedSubscription->description = "({$offset}) Samengevoegde subscriptions van klant, bevat {$added} subscriptions.";
+            $mergedSubscription->update();
+            $offset++;
+        }
         $this->customer->update([
-            'merge_subscriptions'=>true
+            'merge_subscriptions'=>true,
+            'mollie_subscriptions'=>$ids
         ]);
-        $mergedSubscription->update();
+
     }
 }

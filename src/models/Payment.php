@@ -54,6 +54,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
         'amount',
         'amount_refunded',
         'amount_charged_back',
+        'paymentable_offset',
         'notified_at'
     ];
 
@@ -64,7 +65,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
      * @param array $overrides
      * @return static
      */
-    public static function makeFromMolliePayment(MolliePayment $payment, Model $owner, array $actions = [], array $overrides = []): self
+    public static function makeFromMolliePayment(MolliePayment $payment, Model $owner, array $actions = [], array $overrides = [], int $offset = null): self
     {
         $amountChargedBack = $payment->amountChargedBack
             ? (float)$payment->amountChargedBack->value
@@ -87,6 +88,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
             'amount_charged_back' => $amountChargedBack,
             'mollie_mandate_id' => $payment->mandateId,
             'first_payment_actions' => $localActions,
+            'paymentable_offset'=>$offset
         ], $overrides));
     }
 

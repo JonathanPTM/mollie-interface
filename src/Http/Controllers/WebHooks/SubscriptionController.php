@@ -63,22 +63,9 @@ class SubscriptionController extends WebhookController
         }
 
         // Merged subscriptions handler...
-        if ($request->has('merged')){
-            $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
-            $customer = MollieCustomer::where('billable_id', $request->get('merged'))->first();
-            // Make payment
-            $localPayment = Payment::makeFromMolliePayment($payment, $customer);
-            if ($payment->isPaid()){
-                Event::dispatch(new PaymentPaid($payment, $localPayment));
-                $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
-                $payment->update();
-                DB::commit();
-                return response()->json(['success'=>true,'message'=>'Merged subscription has been done ;)']);
-            }
-        } else {
-            // Make payment
-            $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
-        }
+        if ($request->has('merged')) return $this->mergeHandler($request, $payment);
+        // Make payment
+        $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
 
         if ($payment->isPaid()){
             if ($request->has('fcp') && $request->get('fcp') === 'true' && !$mollieSubscription){
@@ -99,6 +86,28 @@ class SubscriptionController extends WebhookController
             if ($request->has('fcp') && $request->get('fcp') === 'true'){
                 if ($localSubscription && !$mollieSubscription) $localSubscription->delete();
             }
+            Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, $mollieSubscription));
+        }
+        DB::commit();
+        return new \Illuminate\Http\Response(null, 200);
+    }
+
+    private function mergeHandler($request, $payment){
+        $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
+        $customer = MollieCustomer::where('mollie_customer_id', $payment->customerId)->first();
+        $offset = null;
+        if ($request->has('offset') && $request->get('offset') !== 'false'){
+            $offset = $request->get('offset');
+        }
+        // Make payment
+        $localPayment = Payment::makeFromMolliePayment($payment, $customer, [], [], $offset);
+        if ($payment->isPaid()){
+            Event::dispatch(new PaymentPaid($payment, $localPayment, null, true, $offset));
+            $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
+            $payment->update();
+            DB::commit();
+            return response()->json(['success'=>true,'message'=>'Merged subscription has been done ;)']);
+        } else {
             Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, $mollieSubscription));
         }
         DB::commit();
