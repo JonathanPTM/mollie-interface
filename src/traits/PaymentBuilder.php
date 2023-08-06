@@ -111,6 +111,11 @@ trait PaymentBuilder
     protected $mollieCustomerId;
 
     /**
+     * @var bool
+     */
+    protected $merging;
+
+    /**
      * Create a Mollie Amount array from a Money object.
      *
      * @param float
@@ -145,7 +150,8 @@ trait PaymentBuilder
                     'type' => $this->owner->getMorphClass(),
                     'id' => $this->owner->getKey(),
                 ],
-                'subscription' => $this->subscriptionID
+                'subscription' => $this->subscriptionID,
+                'merged' => $this->merging
             ],
         ], $this->options));
     }

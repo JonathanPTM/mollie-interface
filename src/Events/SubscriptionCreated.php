@@ -32,8 +32,10 @@ class SubscriptionCreated
     use SerializesModels, Dispatchable;
 
     public Subscription $subscription;
-    public function __construct(Subscription $subscription)
+    public bool $isMerged;
+    public function __construct(Subscription $subscription, $merged=false)
     {
         $this->subscription = $subscription;
+        $this->isMerged = $merged;
     }
 }

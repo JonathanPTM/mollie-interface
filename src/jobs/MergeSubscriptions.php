@@ -44,7 +44,7 @@ class MergeSubscriptions implements ShouldQueue
     public $customer;
     /**
      * Create a new job instance.
-     *
+     * @param MollieCustomer $customer
      * @return void
      */
     public function __construct(MollieCustomer $customer)
@@ -59,6 +59,10 @@ class MergeSubscriptions implements ShouldQueue
         $date = Carbon::today();
         if (!Carbon::today()->firstOfMonth()->isSameDay($date)){
             $date = $date->addMonth()->firstOfMonth();
+        }
+        if ($offset && $offset > 0) {
+            // Stagger incasso dates
+            $date->addDays($offset*7);
         }
         return $mollieCustomer->createSubscription([
             'amount'=>$this->money_to_mollie_array($total),

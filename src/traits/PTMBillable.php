@@ -96,5 +96,8 @@ trait PTMBillable
         return $this->subscriptions()->orderByDesc('created_at')->firstWhere('subscribed_on', $identifier);
     }
 
+    public function isMerged(){
+        return $this->mollieCustomer->merge_subscriptions ?? false;
+    }
 
 }

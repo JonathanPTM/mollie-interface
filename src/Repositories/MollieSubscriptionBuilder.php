@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Event;
 use Mollie\Api\Resources\Payment;
 use PTM\MollieInterface\contracts\Handler;
 use PTM\MollieInterface\Events\SubscriptionCreated;
+use PTM\MollieInterface\jobs\MergeSubscriptions;
 use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\traits\PTMBillable;
 
@@ -47,11 +48,18 @@ class MollieSubscriptionBuilder implements Handler
     }
     public function execute()
     {
-        $mollieSubscription = $this->owner->CustomerAPI()->createSubscription($this->subscription->toMollie(!$this->hasFirstPayment));
-        $this->subscription->update([
-            'mollie_subscription_id'=>$mollieSubscription->id
-        ]);
-        Event::dispatch(new SubscriptionCreated($this->subscription));
+        $mollieSubscription = null;
+        $isMerged = $this->owner->isMerged();
+        if (!$isMerged){
+            $mollieSubscription = $this->owner->CustomerAPI()->createSubscription($this->subscription->toMollie(!$this->hasFirstPayment));
+            $this->subscription->update([
+                'mollie_subscription_id'=>$mollieSubscription->id
+            ]);
+        } else {
+            // Run Merge job!
+            MergeSubscriptions::dispatch($this->owner->mollieCustomer);
+        }
+        Event::dispatch(new SubscriptionCreated($this->subscription, $isMerged));
         return $mollieSubscription;
     }
 }

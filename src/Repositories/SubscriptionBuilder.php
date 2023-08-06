@@ -42,6 +42,7 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
         $this->total = $total;
         $this->options = $options;
         $this->description = $description;
+        $this->merging = $owner->isMerged();
         $this->taxPercentage = config('ptm_subscription.tax', 21);
         $this->interval = SubscriptionInterval::MONTHLY;
         $this->sequenceType = SequenceType::SEQUENCETYPE_ONEOFF;
@@ -63,8 +64,21 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
         // Create subscription entry
         $subscription = $this->buildSubscription();
 
-        // Check if confirmation payment is required
-        if ($this->forceConfirmationPayment){
+        // Check if confirmation payment is required or if
+        // customer is merging subscriptions.
+        if ($this->forceConfirmationPayment || $this->merging){
+
+            if ($this->merging){
+                // Change variables to merge
+                // Calculate amount to pay in difference
+                $interval = $this->interval;
+                $normalDistance = now()->addMonth()->firstOfMonth()->diffInDays(now()->firstOfMonth());
+                $currentDistance = $interval->nextDate()->firstOfMonth()->diffInDays(now());
+                $this->total = ($this->total / $normalDistance) * $currentDistance;
+                // Set description
+                $this->description = "Amount difference for merge. '{$this->description}'";
+            }
+
             // Get payment variables
             $payload = $this->getMolliePayload();
             // Create mollie payment
@@ -84,11 +98,12 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
             'plan_id' => $this->plan->id ?? 0,
             'tax_percentage' => $this->taxPercentage ?? 0,
             'ends_at' => null,
+            'cycle'=>$this->interval->value,
             'cycle_started_at' => now(),
             'cycle_ends_at' => $this->interval->nextDate()
         ]);
         $this->subscriptionID = $subscription->id;
-        $this->webhookUrl = route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $subscription->id, 'fcp'=>$this->forceConfirmationPayment ? 'true' : 'false']);
+        $this->webhookUrl = route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $subscription->id, 'fcp'=>($this->forceConfirmationPayment || $this->merging) ? 'true' : 'false','merging'=>$this->merging ? 'true' : 'false']);
         return $subscription;
     }
 
