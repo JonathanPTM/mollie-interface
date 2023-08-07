@@ -162,7 +162,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         }
         // End subscription at mollie's end...
         $billable = $this->billable;
-        $billable->CustomerAPI()->getSubscription($this->mollie_subscription_id)->cancel();
+        if (!$this->is_merged) $billable->CustomerAPI()->getSubscription($this->mollie_subscription_id)->cancel();
 
         $this->update([
             'ends_at'=>$force ? now() : $this->cycle_ends_at
@@ -189,7 +189,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     }
 
     public function changePlan(Plan$plan){
-        if ($this->mollie_subscription_id){
+        if ($this->mollie_subscription_id && !$this->is_merged){
             $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->mollie_subscription_id);
             $mollieSubscription->amount = $this->money_to_mollie_array($plan->mandatedAmountIncl($this->getInterval(), $this->tax_percentage));
             $mollieSubscription->update();
