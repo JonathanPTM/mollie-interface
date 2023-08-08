@@ -126,7 +126,10 @@ class MergeSubscriptions implements ShouldQueue
                     }
                 }
             } else {
-                if (!$subscription->payments()->where('mollie_payment_status', 'paid')->exists()) continue;
+                if (!$subscription->payments()->where('mollie_payment_status', 'paid')->exists()) {
+                    Log::debug("Subscription didn't have a paid status", [$subscription->id]);
+                    continue;
+                }
             }
             $subscription->update([
                 'is_merged'=>true
