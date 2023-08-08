@@ -65,8 +65,8 @@ class SubscriptionController extends WebhookController
         }
 
         // Merged subscriptions handler...
-        Log::debug("Vars are", [$query->get('merged') === 'true', $localSubscription->is_merged]);
-        if (($query->has('merged') && $query->get('merged') === 'true') || $localSubscription->is_merged) {
+        Log::debug("Vars are", [$query->get('merging') === 'true', $localSubscription->is_merged]);
+        if (($query->has('merging') && $query->get('merging') === 'true') || $localSubscription->is_merged) {
             return $this->mergeHandler($request, $payment, $localSubscription);
         }
         // Make payment
