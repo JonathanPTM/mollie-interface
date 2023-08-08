@@ -33,6 +33,7 @@ use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\Events\PaymentPaid;
 use PTM\MollieInterface\Events\SubscriptionConfirmed;
 use PTM\MollieInterface\Events\SubscriptionPaymentFailed;
+use PTM\MollieInterface\jobs\MergeSubscriptions;
 use PTM\MollieInterface\models\MollieCustomer;
 use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Subscription;
@@ -63,7 +64,7 @@ class SubscriptionController extends WebhookController
         }
 
         // Merged subscriptions handler...
-        if ($request->get('merged') === 'true') return $this->mergeHandler($request, $payment);
+        if ($request->get('merged') === 'true' || $localSubscription->is_merged) return $this->mergeHandler($request, $payment);
         // Make payment
         $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
 
@@ -100,12 +101,13 @@ class SubscriptionController extends WebhookController
             $offset = $request->get('offset');
         }
         // Make payment
-        $localPayment = Payment::makeFromMolliePayment($payment, $customer, [], [], $offset);
+        $localPayment = Payment::makeFromMolliePayment($payment, $customer->billable, [], [], $offset);
         if ($payment->isPaid()){
             Event::dispatch(new PaymentPaid($payment, $localPayment, null, true, $offset));
-            $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
+            $payment->webhookUrl = route('ptm_mollie.webhook.payment.after', ['merged'=>true]);
             $payment->update();
             DB::commit();
+            MergeSubscriptions::dispatch($customer)->afterResponse()->onQueue('developmentBus');
             return response()->json(['success'=>true,'message'=>'Merged subscription has been done ;)']);
         } else {
             Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, $mollieSubscription));

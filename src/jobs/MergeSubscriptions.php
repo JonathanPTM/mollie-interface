@@ -110,7 +110,6 @@ class MergeSubscriptions implements ShouldQueue
             // Because now it will get skipped if it didn't had a subscription.
             if ($subscription->ends_at) continue;
 
-            $total_sum += $subscription->plan->mandatedAmountIncl();
             $mollieSubscription = false;
 
             if ($subscription->mollie_subscription_id){
@@ -126,10 +125,13 @@ class MergeSubscriptions implements ShouldQueue
                         $mollieSubscription->cancel();
                     }
                 }
+            } else {
+                if (!$subscription->payments()->where('mollie_payment_status', 'paid')->exists()) continue;
             }
             $subscription->update([
                 'is_merged'=>true
             ]);
+            $total_sum += $subscription->plan->mandatedAmountIncl();
             $added++;
         }
 
