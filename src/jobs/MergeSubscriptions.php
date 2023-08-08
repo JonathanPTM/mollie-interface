@@ -108,7 +108,7 @@ class MergeSubscriptions implements ShouldQueue
         foreach ($billable->subscriptions as $subscription){
             // If a new container is added, should it first get a normal subscription?
             // Because now it will get skipped if it didn't had a subscription.
-            if (!$subscription->ends_at) continue;
+            if ($subscription->ends_at) continue;
 
             $total_sum += $subscription->plan->mandatedAmountIncl();
             $mollieSubscription = false;
