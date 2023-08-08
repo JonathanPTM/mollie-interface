@@ -63,7 +63,7 @@ class SubscriptionController extends WebhookController
         }
 
         // Merged subscriptions handler...
-        if ($request->has('merged')) return $this->mergeHandler($request, $payment);
+        if ($request->get('merged') === 'true') return $this->mergeHandler($request, $payment);
         // Make payment
         $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
 
@@ -78,7 +78,7 @@ class SubscriptionController extends WebhookController
             $payed_at = Carbon::parse($payment->paidAt);
             $next = $cycle->nextDate($payed_at);
             Log::debug("SubscriptionController:76 Subscription({$localSubscription->id}) cycle change: {$payed_at->toString()} + {$next->toString()}");
-            $localSubscription->updateCycle($payed_at, $mollieSubscription->nextPaymentDate);
+            if ($mollieSubscription) $localSubscription->updateCycle($payed_at, $mollieSubscription->nextPaymentDate);
             Event::dispatch(new PaymentPaid($payment, $localPayment, $mollieSubscription));
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
             $payment->update();
