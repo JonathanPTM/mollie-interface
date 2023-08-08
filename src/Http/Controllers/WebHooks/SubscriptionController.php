@@ -100,7 +100,6 @@ class SubscriptionController extends WebhookController
     private function mergeHandler($request, $payment, $localSubscription){
         Log::debug("Switching handler to MERGE handler.");
         $query = $request->query;
-        $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
         $customer = MollieCustomer::where('mollie_customer_id', $payment->customerId)->first();
         $offset = null;
         if ($query->has('offset') && $query->get('offset') !== 'false'){
@@ -116,7 +115,7 @@ class SubscriptionController extends WebhookController
             MergeSubscriptions::dispatch($customer)->afterResponse()->onQueue('developmentBus');
             return response()->json(['success'=>true,'message'=>'Merged subscription has been done ;)']);
         } else {
-            Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, $mollieSubscription));
+            Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, null));
         }
         DB::commit();
         return new \Illuminate\Http\Response(null, 200);
