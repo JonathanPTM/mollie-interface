@@ -64,7 +64,10 @@ class SubscriptionController extends WebhookController
         }
 
         // Merged subscriptions handler...
-        if ($request->get('merged') === 'true' || $localSubscription->is_merged) return $this->mergeHandler($request, $payment, $localSubscription);
+        Log::debug("Vars are", [$request->get('merged') === 'true', $localSubscription->is_merged]);
+        if ($request->get('merged') === 'true' || $localSubscription->is_merged) {
+            return $this->mergeHandler($request, $payment, $localSubscription);
+        }
         // Make payment
         $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
 
