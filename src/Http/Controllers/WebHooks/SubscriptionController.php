@@ -52,7 +52,8 @@ class SubscriptionController extends WebhookController
         }
         DB::beginTransaction();
         $mollieSubscription = null;
-        if (!$request->has('fcp') || $request->get('fcp') !== 'true') {
+        $query = $request->query;
+        if (!$query->has('fcp') || $query->get('fcp') !== 'true') {
             $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
             /**
              * @var $localSubscription Subscription
@@ -64,15 +65,15 @@ class SubscriptionController extends WebhookController
         }
 
         // Merged subscriptions handler...
-        Log::debug("Vars are", [$request->get('merged') === 'true', $localSubscription->is_merged]);
-        if ($request->get('merged') === 'true' || $localSubscription->is_merged) {
+        Log::debug("Vars are", [$query->get('merged') === 'true', $localSubscription->is_merged]);
+        if (($query->has('merged') && $query->get('merged') === 'true') || $localSubscription->is_merged) {
             return $this->mergeHandler($request, $payment, $localSubscription);
         }
         // Make payment
         $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
 
         if ($payment->isPaid()){
-            if ($request->has('fcp') && $request->get('fcp') === 'true' && !$mollieSubscription){
+            if ($query->has('fcp') && $query->get('fcp') === 'true' && !$mollieSubscription){
                 // Subscription needs to be created!
                 $mollieSubscription = (new MollieSubscriptionBuilder($localSubscription, $localSubscription->billable))->execute();
                 Event::dispatch(new SubscriptionConfirmed($localSubscription));
@@ -87,7 +88,7 @@ class SubscriptionController extends WebhookController
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
             $payment->update();
         } else {
-            if ($request->has('fcp') && $request->get('fcp') === 'true'){
+            if ($query->has('fcp') && $query->get('fcp') === 'true'){
                 if ($localSubscription && !$mollieSubscription) $localSubscription->delete();
             }
             Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, $mollieSubscription));
@@ -98,11 +99,12 @@ class SubscriptionController extends WebhookController
 
     private function mergeHandler($request, $payment, $localSubscription){
         Log::debug("Switching handler to MERGE handler.");
+        $query = $request->query;
         $mollieSubscription = Mollie::api()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
         $customer = MollieCustomer::where('mollie_customer_id', $payment->customerId)->first();
         $offset = null;
-        if ($request->has('offset') && $request->get('offset') !== 'false'){
-            $offset = $request->get('offset');
+        if ($query->has('offset') && $query->get('offset') !== 'false'){
+            $offset = $query->get('offset');
         }
         // Make payment
         $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription, [], [], $offset);
