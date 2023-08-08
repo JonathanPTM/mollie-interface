@@ -165,7 +165,7 @@ class MergeSubscriptions implements ShouldQueue
                 $this->customer->mollie_subscriptions = $ids;
                 $this->customer->save();
             } else {
-                $mergedSubscription->amount =  $total_sum;
+                $mergedSubscription->amount = $this->money_to_mollie_array($total_sum);
             }
             $mergedSubscription->description = "Samengevoegde subscriptions van klant, bevat {$added} subscriptions.";
             $mergedSubscription->update();
@@ -193,7 +193,7 @@ class MergeSubscriptions implements ShouldQueue
                 $mergedSubscription = $this->buildMergedSubscription($subscriptionAmount, $mollieCustomer, $offset);
                 $ids[] = $mergedSubscription->id;
             } else {
-                $mergedSubscription->amount =  $subscriptionAmount;
+                $mergedSubscription->amount = $this->money_to_mollie_array($subscriptionAmount);
             }
             $mergedSubscription->description = "({$offset}) Samengevoegde subscriptions van klant, bevat {$added} subscriptions.";
             $mergedSubscription->update();

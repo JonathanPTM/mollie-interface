@@ -112,7 +112,7 @@ class SubscriptionController extends WebhookController
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after', ['merged'=>true]);
             $payment->update();
             DB::commit();
-            MergeSubscriptions::dispatch($customer)->afterResponse()->onQueue('developmentBus');
+            MergeSubscriptions::dispatch($customer)->onQueue('developmentBus');
             return response()->json(['success'=>true,'message'=>'Merged subscription has been done ;)']);
         } else {
             Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, null));
