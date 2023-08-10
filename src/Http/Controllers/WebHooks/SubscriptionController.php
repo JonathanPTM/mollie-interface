@@ -105,7 +105,7 @@ class SubscriptionController extends WebhookController
         }
         // Make payment
         $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription, [], [], $offset);
-        Log::debug("Status is {$payment->status}");
+        Log::debug("Status is {$payment->status}", $localPayment->id);
         if ($payment->isPaid()){
             $localPayment->update([
                 'mollie_payment_status'=>$payment->status
