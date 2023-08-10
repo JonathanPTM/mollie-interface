@@ -104,7 +104,8 @@ class SubscriptionController extends WebhookController
             $offset = $query->get('offset');
         }
         // Make payment
-        $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription, [], [], $offset);
+//        $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription, [], [], $offset);
+        $localPayment = $this->getPayment($localSubscription, $payment, $offset);
         Log::debug("Status is {$payment->status}", $localPayment->id);
         if ($payment->isPaid()){
             $localPayment->update([
@@ -121,5 +122,29 @@ class SubscriptionController extends WebhookController
         }
         DB::commit();
         return new \Illuminate\Http\Response(null, 200);
+    }
+
+    private function getPayment($localSubscription, $payment, $offset){
+        $amountChargedBack = $payment->amountChargedBack
+            ? (float)$payment->amountChargedBack->value
+            : 0.0;
+
+        $amountRefunded = $payment->amountRefunded
+            ? (float)$payment->amountRefunded->value
+            : 0.0;
+        $payment = $localSubscription->payments()->firstOrCreate([
+            'mollie_payment_id' => $payment->id,
+        ], [
+            'mollie_payment_status' => $payment->status,
+            'currency' => $payment->amount->currency,
+            'amount' => (float)$payment->amount->value,
+            'amount_refunded' => $amountRefunded,
+            'amount_charged_back' => $amountChargedBack,
+            'mollie_mandate_id' => $payment->mandateId,
+            'first_payment_actions' => null,
+            'paymentable_offset'=>$offset
+        ]);
+        if ($payment->mollie_payment_status !== $payment->status) $payment->mollie_payment_status = $payment->status;
+        return $payment;
     }
 }

@@ -77,11 +77,11 @@ class Payment extends \Illuminate\Database\Eloquent\Model
 
         $localActions = !empty($actions) ? $actions : $payment->metadata->actions ?? null;
 
-        return static::create(array_merge([
+        return static::make(array_merge([
             'mollie_payment_id' => $payment->id,
             'mollie_payment_status' => $payment->status,
-            'paymentable_type' => $owner->getMorphClass(),
-            'paymentable_id' => $owner->getKey(),
+            'owner_type' => $owner->getMorphClass(),
+            'owner_id' => $owner->getKey(),
             'currency' => $payment->amount->currency,
             'amount' => (float)$payment->amount->value,
             'amount_refunded' => $amountRefunded,
