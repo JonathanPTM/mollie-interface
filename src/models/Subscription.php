@@ -200,10 +200,18 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         return $this;
     }
 
+    /**
+     * get periodic expenses
+     * @return mixed
+     */
+    public function getAmount(){
+        return $this->plan->mandatedAmountIncl($this->getInterval(), $this->tax_percentage);
+    }
+
     public function toMollie($startNow=false){
         $interval = $this->getInterval();
         return [
-            'amount'=>$this->money_to_mollie_array($this->plan->mandatedAmountIncl($interval, $this->tax_percentage)),
+            'amount'=>$this->money_to_mollie_array($this->getAmount()),
             'interval'=>$interval->toMollie(),
             'startDate'=> ($startNow ? now()->format('Y-m-d') : Carbon::parse($this->cycle_ends_at))->format('Y-m-d'),
             'description'=>($this->subscribed_on ?? $this->id)." - ".$this->plan->description,
