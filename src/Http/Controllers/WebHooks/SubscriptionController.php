@@ -42,7 +42,6 @@ use PTM\MollieInterface\Repositories\MollieSubscriptionBuilder;
 class SubscriptionController extends WebhookController
 {
     public function hooked(Request $request){
-        Log::debug("Heeft dit er mee te maken? ".$request->url());
         $payment = $this->getMolliePaymentById($request->get('id'));
         if (!$payment){
             return new Response(null, 404);
@@ -65,7 +64,6 @@ class SubscriptionController extends WebhookController
         }
 
         // Merged subscriptions handler...
-        Log::debug("Vars are", [$query->get('merging') === 'true', $localSubscription->is_merged]);
         if (($query->has('merging') && $query->get('merging') === 'true') || $localSubscription->is_merged) {
             return $this->mergeHandler($request, $payment, $localSubscription);
         }
@@ -107,7 +105,11 @@ class SubscriptionController extends WebhookController
         }
         // Make payment
         $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription, [], [], $offset);
+        Log::debug("Status is {$payment->status}");
         if ($payment->isPaid()){
+            $localPayment->update([
+                'mollie_payment_status'=>$payment->status
+            ]);
             Event::dispatch(new PaymentPaid($payment, $localPayment, null, true, $offset));
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after', ['merged'=>true]);
             $payment->update();
