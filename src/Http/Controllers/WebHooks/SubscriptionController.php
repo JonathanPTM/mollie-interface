@@ -49,7 +49,7 @@ class SubscriptionController extends WebhookController
         if ((!isset($payment->subscriptionId) || !isset($payment->customerId)) && (!$request->has('fcp') || $request->get('fcp') !== 'true')) {
             return \response('Subscription identifier parameter not found.', 504);
         }
-        DB::beginTransaction();
+
         $mollieSubscription = null;
         $query = $request->query;
         if (!$query->has('fcp') || $query->get('fcp') !== 'true') {
@@ -67,6 +67,7 @@ class SubscriptionController extends WebhookController
         if (($query->has('merging') && $query->get('merging') === 'true') || $localSubscription->is_merged) {
             return $this->mergeHandler($request, $payment, $localSubscription);
         }
+        DB::beginTransaction();
         // Make payment
         $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
 
@@ -103,18 +104,16 @@ class SubscriptionController extends WebhookController
         if ($query->has('offset') && $query->get('offset') !== 'false'){
             $offset = $query->get('offset');
         }
+        DB::beginTransaction();
         // Make payment
 //        $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription, [], [], $offset);
         $localPayment = $this->getPayment($localSubscription, $payment, $offset);
         if ($payment->isPaid()){
-            $localPayment->update([
-                'mollie_payment_status'=>$payment->status
-            ]);
-            Event::dispatch(new PaymentPaid($payment, $localPayment, null, true, $offset));
-            $payment->webhookUrl = route('ptm_mollie.webhook.payment.after', ['merged'=>true]);
+            $payment->webhookUrl = route('ptm_mollie.webhook.payment.after', ['merging'=>true]);
             $payment->update();
             DB::commit();
             MergeSubscriptions::dispatch($customer)->onQueue('developmentBus');
+            Event::dispatch(new PaymentPaid($payment, $localPayment, null, true, $offset));
             return response()->json(['success'=>true,'message'=>'Merged subscription has been done ;)']);
         } else {
             Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, null));
