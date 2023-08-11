@@ -103,7 +103,15 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
             'cycle_ends_at' => $this->interval->nextDate()
         ]);
         $this->subscriptionID = $subscription->id;
-        $this->webhookUrl = route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $subscription->id, 'fcp'=>($this->forceConfirmationPayment || $this->merging) ? 'true' : 'false','merging'=>$this->merging ? 'true' : 'false']);
+        $this->webhookUrl = route(
+            $this->merging ?
+                'ptm_mollie.webhook.payment.merge' :
+                'ptm_mollie.webhook.payment.subscription',
+            [
+                'subscription_id' => $subscription->id,
+                'fcp'=>($this->forceConfirmationPayment || $this->merging) ? 'true' : 'false',
+                'merging'=>$this->merging ? 'true' : 'false'
+            ]);
         return $subscription;
     }
 

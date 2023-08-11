@@ -88,6 +88,14 @@ trait PTMBillable
     }
 
     /**
+     * Get the subscription's payments.
+     */
+    public function payments()
+    {
+        return $this->morphMany(Payment::class, 'paymentable');
+    }
+
+    /**
      * @param $identifier
      * @return Subscription|null
      */

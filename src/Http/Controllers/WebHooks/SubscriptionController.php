@@ -65,7 +65,8 @@ class SubscriptionController extends WebhookController
 
         // Merged subscriptions handler...
         if (($query->has('merging') && $query->get('merging') === 'true') || $localSubscription->is_merged) {
-            return $this->mergeHandler($request, $payment, $localSubscription);
+            return response('This method is deprecated. Please use the other endpoint.', 402);
+//            return $this->mergeHandler($request, $payment, $localSubscription);
         }
         DB::beginTransaction();
         // Make payment
@@ -96,53 +97,28 @@ class SubscriptionController extends WebhookController
         return new \Illuminate\Http\Response(null, 200);
     }
 
-    private function mergeHandler($request, $payment, $localSubscription){
-        Log::debug("Switching handler to MERGE handler.");
-        $query = $request->query;
-        $customer = MollieCustomer::where('mollie_customer_id', $payment->customerId)->first();
-        $offset = null;
-        if ($query->has('offset') && $query->get('offset') !== 'false'){
-            $offset = $query->get('offset');
+    public function merged(Request$request){
+        $payment = $this->getMolliePaymentById($request->get('id'));
+        if (!$payment){
+            return new Response(null, 404);
         }
+        if (!isset($payment->subscriptionId) || !isset($payment->customerId)) {
+            return \response('Subscription identifier parameter not found.', 504);
+        }
+        $customer = MollieCustomer::where('mollie_customer_id', $payment->customerId)->first();
+
+        // Start ...
         DB::beginTransaction();
-        // Make payment
-//        $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription, [], [], $offset);
-        $localPayment = $this->getPayment($localSubscription, $payment, $offset);
+        $localPayment = $this->getPayment($customer->billable, $payment, null);
         if ($payment->isPaid()){
+            // Handle
+            Event::dispatch(new PaymentPaid($payment, $localPayment, null, true));
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after', ['merging'=>true]);
             $payment->update();
-            DB::commit();
-            MergeSubscriptions::dispatch($customer)->onQueue('developmentBus');
-            Event::dispatch(new PaymentPaid($payment, $localPayment, null, true, $offset));
-            return response()->json(['success'=>true,'message'=>'Merged subscription has been done ;)']);
         } else {
-            Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, null));
+            // ToDo: Handle payment not paid status
+            Log::warning("Betaling is niet als betaald door gekomen van een samengevoegde factuur.", ['id'=>$payment->id,'status'=>$payment->status]);
         }
-        DB::commit();
-        return new \Illuminate\Http\Response(null, 200);
-    }
 
-    private function getPayment($localSubscription, $payment, $offset){
-        $amountChargedBack = $payment->amountChargedBack
-            ? (float)$payment->amountChargedBack->value
-            : 0.0;
-
-        $amountRefunded = $payment->amountRefunded
-            ? (float)$payment->amountRefunded->value
-            : 0.0;
-        $payment = $localSubscription->payments()->firstOrCreate([
-            'mollie_payment_id' => $payment->id,
-        ], [
-            'mollie_payment_status' => $payment->status,
-            'currency' => $payment->amount->currency,
-            'amount' => (float)$payment->amount->value,
-            'amount_refunded' => $amountRefunded,
-            'amount_charged_back' => $amountChargedBack,
-            'mollie_mandate_id' => $payment->mandateId,
-            'first_payment_actions' => null,
-            'paymentable_offset'=>$offset
-        ]);
-        if ($payment->mollie_payment_status !== $payment->status) $payment->mollie_payment_status = $payment->status;
-        return $payment;
     }
 }

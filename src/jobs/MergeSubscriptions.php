@@ -70,7 +70,7 @@ class MergeSubscriptions implements ShouldQueue
             'startDate'=> $date->format('Y-m-d'),
             'description'=>$offset ? "({$offset}) Samengevoegde subscriptions van klant." : "Samengevoegde subscriptions van klant.",
             'mandateId'=>$customer->mollie_mandate_id,
-            'webhookUrl'=>route('ptm_mollie.webhook.payment.subscription', ['merged' => $customer->billable_id, 'offset'=>$offset]),
+            'webhookUrl'=>route('ptm_mollie.webhook.payment.subscription.merged', ['merged' => $customer->billable_id, 'offset'=>$offset]),
             'metadata'=>[
                 'merged_on'=>Carbon::now()->format("d-m-Y H:i:s"),
                 'offset'=>$offset,

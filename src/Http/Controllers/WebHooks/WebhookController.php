@@ -51,4 +51,28 @@ abstract class WebhookController extends Controller
             throw $e;
         }
     }
+
+    public function getPayment($localSubscription, $payment, $offset){
+        $amountChargedBack = $payment->amountChargedBack
+            ? (float)$payment->amountChargedBack->value
+            : 0.0;
+
+        $amountRefunded = $payment->amountRefunded
+            ? (float)$payment->amountRefunded->value
+            : 0.0;
+        $payment = $localSubscription->payments()->firstOrCreate([
+            'mollie_payment_id' => $payment->id,
+        ], [
+            'mollie_payment_status' => $payment->status,
+            'currency' => $payment->amount->currency,
+            'amount' => (float)$payment->amount->value,
+            'amount_refunded' => $amountRefunded,
+            'amount_charged_back' => $amountChargedBack,
+            'mollie_mandate_id' => $payment->mandateId,
+            'first_payment_actions' => null,
+            'paymentable_offset'=>$offset
+        ]);
+        if ($payment->mollie_payment_status !== $payment->status) $payment->mollie_payment_status = $payment->status;
+        return $payment;
+    }
 }
