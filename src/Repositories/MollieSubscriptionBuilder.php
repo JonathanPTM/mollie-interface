@@ -57,7 +57,8 @@ class MollieSubscriptionBuilder implements Handler
             ]);
         } else {
             // Run Merge job!
-            MergeSubscriptions::dispatch($this->owner->mollieCustomer);
+            MergeSubscriptions::dispatch($this->owner->mollieCustomer)
+                ->onQueue(config('ptm_subscription.bus'));
         }
         Event::dispatch(new SubscriptionCreated($this->subscription, $isMerged));
         return $mollieSubscription;

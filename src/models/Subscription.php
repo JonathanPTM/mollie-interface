@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use PTM\MollieInterface\Events\SubscriptionCancelled;
 use PTM\MollieInterface\Events\SubscriptionChange;
+use PTM\MollieInterface\jobs\MergeSubscriptions;
 use PTM\MollieInterface\traits\PaymentMethodString;
 
 class Subscription extends \Illuminate\Database\Eloquent\Model
@@ -168,6 +169,10 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
             'ends_at'=>$force ? now() : $this->cycle_ends_at
         ]);
         Event::dispatch(new SubscriptionCancelled($this));
+        if ($this->is_merged){
+            MergeSubscriptions::dispatch($this->billable->mollieCustomer)
+                ->onQueue(config('ptm_subscription.bus'));
+        }
         return $this;
     }
 
@@ -197,6 +202,10 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         $this->plan_id = $plan->id;
         $this->save();
         Event::dispatch(new SubscriptionChange($this));
+        if ($this->is_merged){
+            MergeSubscriptions::dispatch($this->billable->mollieCustomer)
+                ->onQueue(config('ptm_subscription.bus'));
+        }
         return $this;
     }
 

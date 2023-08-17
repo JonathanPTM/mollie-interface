@@ -35,7 +35,7 @@ class MergeController extends WebhookController
             ]);
             DB::commit();
             MergeSubscriptions::dispatch($customer)
-                ->onQueue('developmentBus');
+                ->onQueue(config('ptm_subscription.bus'));
             Event::dispatch(new PaymentPaid($payment, $localPayment, null));
             return response()->json(['success'=>true,'message'=>'Merged subscription has been done ;)']);
         }

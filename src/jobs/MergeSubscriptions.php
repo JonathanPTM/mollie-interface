@@ -25,6 +25,7 @@ namespace PTM\MollieInterface\jobs;
 
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -38,7 +39,7 @@ use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\models\SubscriptionInterval;
 use PTM\MollieInterface\traits\PaymentMethodString;
 
-class MergeSubscriptions implements ShouldQueue
+class MergeSubscriptions implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, PaymentMethodString, Trackable;
     public $customer;
@@ -51,6 +52,14 @@ class MergeSubscriptions implements ShouldQueue
     {
         $this->customer = $customer;
         $this->setInput(['billable_id'=>$customer->billable_id]);
+    }
+
+    /**
+     * Get the unique ID for the job.
+     */
+    public function uniqueId(): string
+    {
+        return $this->customer->billable_id;
     }
 
     private function buildMergedSubscription($total,$mollieCustomer, $offset=false):\Mollie\Api\Resources\Subscription{

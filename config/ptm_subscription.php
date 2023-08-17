@@ -22,5 +22,6 @@
  */
 return [
     'webhook_prefix' => 'payment/webhook',
-    'tax' => 21
+    'tax' => 21,
+    'bus' => 'developmentBus'
 ];
