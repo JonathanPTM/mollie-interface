@@ -78,6 +78,7 @@ enum SubscriptionInterval: int
 
     public function nextDate($now=null)
     {
+        if ($now) $now = $now->clone();
         if ($this->getLetter() === 'd'){
             if ($now) return $now->addDay();
             return now()->addDay();
@@ -87,6 +88,7 @@ enum SubscriptionInterval: int
     }
 
     public function previousDate($now=null){
+        if ($now) $now = $now->clone();
         if ($this->getLetter() === 'd'){
             if ($now) return $now->subDay();
             return now()->subDay();
