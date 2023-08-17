@@ -135,7 +135,18 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
             return ['status'=>false,'message'=>'No subscriptions were found to be unmerged','total'=>$dismembered];
         }
 
-        if ($mergedSubscription->isActive()) $mergedSubscription->cancel();
+        // Cancel merged subscriptions
+        foreach ($this->customer->mollie_subscriptions as $subId){
+            $sub = mollie()->customers()->get($this->customer->mollie_customer_id)->getSubscription($subId);
+            if ($sub->isActive()) $sub->cancel();
+        }
+
+        // Change database
+        $this->customer->update([
+            'mollie_subscriptions'=>[],
+            'merge_subscriptions'=>false
+        ]);
+
         return ['status'=>true,'message'=>null,'total'=>$dismembered];
     }
 
