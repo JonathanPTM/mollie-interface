@@ -30,6 +30,9 @@ class MergeController extends WebhookController
         if ($payment->isPaid()){
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after', ['merging'=>true,'differ'=>true]);
             $payment->update();
+            $localPayment->update([
+                'mollie_payment_status' => $payment->status
+            ]);
             DB::commit();
             MergeSubscriptions::dispatch($customer)
                 ->onQueue('developmentBus');
