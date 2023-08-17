@@ -222,7 +222,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         return [
             'amount'=>$this->money_to_mollie_array($this->getAmount()),
             'interval'=>$interval->toMollie(),
-            'startDate'=> ($startNow ? now()->format('Y-m-d') : Carbon::parse($this->cycle_ends_at))->format('Y-m-d'),
+            'startDate'=> ($startNow ? now()->format('Y-m-d') : Carbon::parse($this->cycle_ends_at)->format('Y-m-d')),
             'description'=>($this->subscribed_on ?? $this->id)." - ".$this->plan->description,
             'mandateId'=>$this->billable->mollieCustomer->mollie_mandate_id,
             'webhookUrl'=>route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $this->id]),
