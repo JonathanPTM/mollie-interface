@@ -133,6 +133,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
                 'cycle_started_at'=>$last_payment,
                 'cycle_ends_at'=>$this->getCycle()->nextDate($last_payment)
             ]);
+            return;
         }
         $this->update([
             'cycle_started_at'=>$last_payment,

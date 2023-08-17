@@ -67,8 +67,8 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
     private function recreateSubscription($subscription, $mergedSubscription, $mollieCustomer){
         // Recreate subscription
         $next = Carbon::parse($mergedSubscription->nextPaymentDate);
-        $subscription->updateCycle(null, $next);
         Log::debug("Recreating subscription ($subscription->id)", [$next]);
+        $subscription->updateCycle(null, $next);
         $new_instance = $mollieCustomer->createSubscription($subscription->toMollie());
         $subscription->update([
             'mollie_subscription_id'=>$new_instance->id,
