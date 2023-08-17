@@ -71,7 +71,7 @@ class MollieCustomer extends Model
 
     public function getMergedSubscription($offset=0): ?\Mollie\Api\Resources\Subscription
     {
-        if (count($this->mollie_subscriptions) < 1) return null;
+        if (count($this->mollie_subscriptions) < ($offset+1)) return null;
         $id = $this->mollie_subscriptions[$offset];
         if (!$id) return null;
         return mollie()->customers()->get($this->mollie_customer_id)->getSubscription($id);

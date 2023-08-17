@@ -168,8 +168,8 @@ class MergeSubscriptions implements ShouldQueue, ShouldBeUnique
         }
 
         // Check if there need to be multiple subscriptions
-        if ($total_sum < 990){
-            // If the $total_sum is under 990, then one subscription will suffice.
+        if ($total_sum < config('ptm_subscription.break')){
+            // If the $total_sum is under 990/config('ptm_subscription.break'), then one subscription will suffice.
             if (!$mergedSubscription) {
                 $ids = [];
                 $mergedSubscription = $this->buildMergedSubscription($total_sum, $mollieCustomer);
@@ -186,9 +186,9 @@ class MergeSubscriptions implements ShouldQueue, ShouldBeUnique
             ]);
             return;
         }
-        // Else create multiple subscriptions for every 990 EUR.
+        // Else create multiple subscriptions for every 990/config('ptm_subscription.break') EUR.
         $subscriptionAmounts = [];
-        $maximumGroupAmount = 990;
+        $maximumGroupAmount = config('ptm_subscription.break');
         $amount = $total_sum;
         while ($amount > 0) {
             $groupAmount = min($amount, $maximumGroupAmount);

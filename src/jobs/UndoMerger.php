@@ -57,7 +57,7 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return $this->customer->billable->id;
+        return $this->customer->billable_id;
     }
 
     /**
@@ -69,6 +69,17 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
     {
         $this->customer = $customer;
         $this->setInput(['billable_id'=>$customer->billable_id]);
+    }
+
+    private function recreateSubscription($subscription, $mergedSubscription, $mollieCustomer){
+        // Recreate subscription
+        $next = Carbon::parse($mergedSubscription->nextPaymentDate);
+        $subscription->updateCycle(null, $next);
+        $new_instance = $mollieCustomer->createSubscription($subscription->toMollie());
+        $subscription->update([
+            'mollie_subscription_id'=>$new_instance->id,
+            'is_merged' => false
+        ]);
     }
 
     private function excecutor($billable){
@@ -83,27 +94,40 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
         if (!$mergedSubscription->isActive()) return ['status'=>false,'message'=>'No active merged subscription was found.','total'=>0];
 
         $dismembered = 0;
+        $grouped = 0;
+        $offset = 0;
 
         /**
          * @var Subscription $subscription
          */
         foreach ($billable->subscriptions as $subscription){
-            if (!$subscription->mollie_subscription_id) continue;
             if (!$subscription->is_merged) continue;
 
-            $mollieSubscription = $mollieCustomer->getSubscription($subscription->mollie_subscription_id);
-            if (!$mollieSubscription->isActive()){
-                // Recreate subscription
-                $next = Carbon::parse($mergedSubscription->nextPaymentDate);
-                $subscription->updateCycle(null, $next);
-                $new_instance =  $mollieCustomer->createSubscription($subscription->toMollie());
-                $subscription->update([
-                    'mollie_subscription_id'=>$new_instance->id
-                ]);
+            // Check if grouped is greater than config('ptm_subscription.break')
+            // In case change merged subscription...
+            if ($grouped >= config('ptm_subscription.break')){
+                $offset++;
+                $nextSub = $this->customer->getMergedSubscription($offset);
+                if ($nextSub) {
+                    $mergedSubscription = $nextSub;
+                } else {
+                    $offset = 0;
+                    $mergedSubscription = $this->customer->getMergedSubscription();
+                }
+                $grouped = 0;
             }
-            $subscription->is_merged = false;
-            $subscription->save();
+
+            if (!$subscription->mollie_subscription_id) {
+                $this->recreateSubscription($subscription, $mergedSubscription, $mollieCustomer);
+            } else {
+                // Check if existing mollie subscription isn't active...
+                $mollieSubscription = $mollieCustomer->getSubscription($subscription->mollie_subscription_id);
+                if (!$mollieSubscription->isActive()){
+                    $this->recreateSubscription($subscription, $mergedSubscription, $mollieCustomer);
+                }
+            }
             $dismembered++;
+            $grouped = $grouped + $subscription->getAmount();
         }
 
         if ($dismembered <= 0) {
