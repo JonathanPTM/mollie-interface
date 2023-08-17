@@ -46,13 +46,6 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
     public $customer;
 
     /**
-     * The number of seconds after which the job's unique lock will be released.
-     *
-     * @var int
-     */
-    public $uniqueFor = 3600;
-
-    /**
      * The unique ID of the job.
      */
     public function uniqueId(): string
@@ -75,6 +68,7 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
         // Recreate subscription
         $next = Carbon::parse($mergedSubscription->nextPaymentDate);
         $subscription->updateCycle(null, $next);
+        Log::debug("Recreating subscription ($subscription->id)", [$next]);
         $new_instance = $mollieCustomer->createSubscription($subscription->toMollie());
         $subscription->update([
             'mollie_subscription_id'=>$new_instance->id,
@@ -115,6 +109,7 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
                     $mergedSubscription = $this->customer->getMergedSubscription();
                 }
                 $grouped = 0;
+                Log::debug("Switched merged subscription to next in line ($offset)");
             }
 
             if (!$subscription->mollie_subscription_id) {
