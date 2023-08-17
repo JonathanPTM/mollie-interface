@@ -153,10 +153,8 @@ class UndoMerger implements ShouldQueue, ShouldBeUnique
     public function handle()
     {
         $billable = $this->customer->billable;
-//        DB::beginTransaction();
         $result = $this->excecutor($billable);
         Log::debug(json_encode($result));
-//        DB::commit();
         $this->setOutput($result);
 
 
