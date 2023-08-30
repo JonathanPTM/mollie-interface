@@ -24,6 +24,7 @@
 namespace PTM\MollieInterface\traits;
 
 use PTM\MollieInterface\contracts\SubscriptionBuilder;
+use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\models\SubscriptionInterval;
