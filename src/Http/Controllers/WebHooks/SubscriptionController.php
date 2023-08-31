@@ -70,7 +70,7 @@ class SubscriptionController extends WebhookController
         }
         DB::beginTransaction();
         // Make payment
-        $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription);
+        $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription, $localSubscription->billable);
 
         if ($payment->isPaid()){
             if ($query->has('fcp') && $query->get('fcp') === 'true' && !$mollieSubscription){
@@ -81,8 +81,6 @@ class SubscriptionController extends WebhookController
             // Update subscription cycle...
             $cycle = $localSubscription->getCycle();
             $payed_at = Carbon::parse($payment->paidAt);
-            $next = $cycle->nextDate($payed_at);
-            Log::debug("SubscriptionController:76 Subscription({$localSubscription->id}) cycle change: {$payed_at->toString()} + {$next->toString()}");
             if ($mollieSubscription) $localSubscription->updateCycle($payed_at, $mollieSubscription->nextPaymentDate);
             Event::dispatch(new PaymentPaid($payment, $localPayment, $mollieSubscription));
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');

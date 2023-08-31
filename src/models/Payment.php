@@ -65,7 +65,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
      * @param array $overrides
      * @return static
      */
-    public static function makeFromMolliePayment(MolliePayment $payment, Model $owner, array $actions = [], array $overrides = [], int $offset = null): self
+    public static function makeFromMolliePayment(MolliePayment $payment, Model $owner, Model $billable, array $actions = [], array $overrides = [], int $offset = null): self
     {
         $amountChargedBack = $payment->amountChargedBack
             ? (float)$payment->amountChargedBack->value
@@ -77,7 +77,19 @@ class Payment extends \Illuminate\Database\Eloquent\Model
 
         $localActions = !empty($actions) ? $actions : $payment->metadata->actions ?? null;
 
-        return static::make(array_merge([
+        return $owner->payments()->make(array_merge([
+            'mollie_payment_id' => $payment->id,
+            'mollie_payment_status' => $payment->status,
+            'currency' => $payment->amount->currency,
+            'amount' => (float)$payment->amount->value,
+            'amount_refunded' => $amountRefunded,
+            'amount_charged_back' => $amountChargedBack,
+            'mollie_mandate_id' => $payment->mandateId,
+            'first_payment_actions' => $localActions,
+            'paymentable_offset'=>$offset
+        ], $overrides))->billable()->associate($billable);
+
+        /*return static::make(array_merge([
             'mollie_payment_id' => $payment->id,
             'mollie_payment_status' => $payment->status,
             'owner_type' => $owner->getMorphClass(),
@@ -89,7 +101,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
             'mollie_mandate_id' => $payment->mandateId,
             'first_payment_actions' => $localActions,
             'paymentable_offset'=>$offset
-        ], $overrides));
+        ], $overrides));*/
     }
 
     /**
@@ -122,7 +134,15 @@ class Payment extends \Illuminate\Database\Eloquent\Model
      */
     public function paymentable()
     {
-        return $this->morphTo();
+        return $this->morphTo('paymentable');
+    }
+
+    /**
+     * Get the parent paymentable model.
+     */
+    public function billable()
+    {
+        return $this->morphTo('billable');
     }
 
     /**
@@ -133,7 +153,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
      * @param array $actions
      * @return static
      */
-    public static function findByMolliePaymentOrCreate(MolliePayment $molliePayment, Model $owner): self
+    public static function findByMolliePaymentOrCreate(MolliePayment $molliePayment, Model $owner, Model $billable): self
     {
         $payment = self::findByPaymentId($molliePayment->id);
 
@@ -141,7 +161,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
             return $payment;
         }
 
-        return $owner->payments()->create(array_filter([
+        return $owner->payments()->make(array_filter([
             'mollie_payment_id' => $molliePayment->id,
             'mollie_payment_status' => $molliePayment->status,
             'mollie_mandate_id' => $molliePayment->mandateId,
@@ -149,6 +169,6 @@ class Payment extends \Illuminate\Database\Eloquent\Model
             'amount' => $molliePayment->amount->value,
             'amount_refunded' => ($molliePayment->amountRefunded ? $molliePayment->amountRefunded->value : null),
             'amount_charged_back' => ($molliePayment->amountChargedBack ? $molliePayment->amountChargedBack->value : null)
-        ]));
+        ]))->billable()->associate($billable)->save();
     }
 }

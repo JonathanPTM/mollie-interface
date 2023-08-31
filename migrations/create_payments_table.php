@@ -41,6 +41,7 @@ class CreatePtmPaymentsTable extends Migration
             $table->string('mollie_payment_status');
             $table->string('mollie_mandate_id')->nullable();
             $table->morphs('paymentable');
+            $table->morphs('billable');
             $table->string('currency', 3);
             $table->unsignedInteger('amount')->default(0);
             $table->unsignedInteger('amount_refunded')->default(0);

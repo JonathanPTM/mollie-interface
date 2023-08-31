@@ -93,7 +93,7 @@ trait PTMBillable
      */
     public function payments()
     {
-        return $this->morphMany(Payment::class, 'paymentable');
+        return $this->morphMany(Payment::class, 'billable');
     }
 
     /**
