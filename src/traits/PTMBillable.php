@@ -79,7 +79,7 @@ trait PTMBillable
                         $mPay = $payment->getMolliePayment();
                         $checkout = $mPay->_links->checkout;
                         if ($mPay->isOpen() && $checkout){
-                            return new Redirect($checkout);
+                            return new Redirect($checkout->href);
                         }
                     }
                 }
