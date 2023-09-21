@@ -210,6 +210,10 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         return $this;
     }
 
+    public function isActive(){
+        return $this->payments()->where('mollie_payment_status', 'paid')->exists();
+    }
+
     /**
      * get periodic expenses
      * @return mixed
