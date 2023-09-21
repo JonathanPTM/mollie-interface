@@ -26,6 +26,7 @@ namespace PTM\MollieInterface\traits;
 use PTM\MollieInterface\contracts\SubscriptionBuilder;
 use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Plan;
+use PTM\MollieInterface\models\Redirect;
 use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\models\SubscriptionInterval;
 use PTM\MollieInterface\Repositories\FirstPaymentSubscriptionBuilder;
@@ -56,12 +57,33 @@ trait PTMBillable
      * @param $subscribed_on
      * @param SubscriptionInterval $interval
      * @param bool $resetStartCycle
-     * @return SubscriptionBuilder|Subscription
+     * @param bool $forceConfirmationPayment
+     * @return SubscriptionBuilder|Subscription|Redirect
      */
     public function updateOrSubscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, bool $resetStartCycle = true, $forceConfirmationPayment=false)
     {
         $subscription = $this->getSubscription($subscribed_on);
         if (!$subscription || $subscription->ends_at || !$subscription->mollie_subscription_id){
+            if ($subscription && !$subscription->mollie_subscription_id){
+                // Check if subscription already exists and the payment is still open...
+                if (!$subscription->isActive()
+                    && $subscription->plan_id === $plan->id
+                && $subscription->getInterval()->getLetter() === $interval->getLetter()){
+                    // Subscription is the same as existing...
+                    $payment = $subscription->payments()->first();
+                    if ($payment->mollie_payment_status = 'open'){
+                        // Use old payment.
+                        /**
+                         * @var $mPay \Mollie\Api\Resources\Payment
+                         */
+                        $mPay = $payment->getMolliePayment();
+                        $checkout = $mPay->_links->checkout;
+                        if ($mPay->isOpen() && $checkout){
+                            return new Redirect($checkout);
+                        }
+                    }
+                }
+            }
             // Return new builder.
             return $this->subscribe($plan, $subscribed_on, $interval, $forceConfirmationPayment);
         }

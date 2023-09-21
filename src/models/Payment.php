@@ -150,6 +150,10 @@ class Payment extends \Illuminate\Database\Eloquent\Model
         return static::where('mollie_payment_id', $id)->first();
     }
 
+    public function getMolliePayment(){
+        return mollie()->payments()->get($this->mollie_payment_id);
+    }
+
     /**
      * Retrieve a Payment by the Mollie Payment id or throw an Exception if not found.
      *
