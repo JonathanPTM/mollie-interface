@@ -24,6 +24,7 @@
 namespace PTM\MollieInterface\Http\Controllers\WebHooks;
 
 use Mollie\Api\Exceptions\ApiException;
+use Mollie\Api\Resources\Payment;
 use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\Http\Controllers\Controller;
 
@@ -74,5 +75,22 @@ abstract class WebhookController extends Controller
         ]);
         if ($payment->mollie_payment_status !== $payment->status) $payment->mollie_payment_status = $payment->status;
         return $payment;
+    }
+
+    /**
+     * @param Payment $payment
+     * @param $localPayment
+     * @param $localSubscription
+     * @param $mollieSubscription
+     * @param $fcp
+     * @return void
+     */
+    public function handleUnpaidPayment($payment, $localPayment, $localSubscription, $mollieSubscription, $fcp){
+        $localPayment->mollie_payment_status = $payment->status;
+        if ($fcp){
+            if ($localSubscription && !$mollieSubscription) {
+                $localSubscription->delete();
+            }
+        }
     }
 }

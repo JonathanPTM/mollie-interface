@@ -66,11 +66,10 @@ class SubscriptionController extends WebhookController
         // Merged subscriptions handler...
         if (($query->has('merging') && $query->get('merging') === 'true') || $localSubscription->is_merged) {
             return response('This method is deprecated. Please use the other endpoint.', 402);
-//            return $this->mergeHandler($request, $payment, $localSubscription);
         }
         DB::beginTransaction();
         // Make payment
-        $localPayment = Payment::makeFromMolliePayment($payment, $localSubscription, $localSubscription->billable);
+        $localPayment = Payment::makeOrFindFromMolliePayment($payment, $localSubscription, $localSubscription->billable);
 
         if ($payment->isPaid()){
             if ($query->has('fcp') && $query->get('fcp') === 'true' && !$mollieSubscription){
@@ -86,11 +85,10 @@ class SubscriptionController extends WebhookController
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
             $payment->update();
         } else {
-            if ($query->has('fcp') && $query->get('fcp') === 'true'){
-                if ($localSubscription && !$mollieSubscription) $localSubscription->delete();
-            }
+            $this->handleUnpaidPayment($payment, $localPayment, $localSubscription, $mollieSubscription, ($query->has('fcp') && $query->get('fcp') === 'true'));
             Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment, $mollieSubscription));
         }
+        $localPayment->save();
         DB::commit();
         return new \Illuminate\Http\Response(null, 200);
     }

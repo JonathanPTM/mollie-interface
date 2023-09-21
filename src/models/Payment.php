@@ -57,6 +57,41 @@ class Payment extends \Illuminate\Database\Eloquent\Model
         'paymentable_offset',
         'notified_at'
     ];
+    /**
+     * @param MolliePayment $payment
+     * @param \Illuminate\Database\Eloquent\Model $owner
+     * @param array $actions
+     * @param array $overrides
+     * @return static
+     */
+    public static function makeOrFindFromMolliePayment(MolliePayment $payment, Model $owner, Model $billable, array $actions = [], array $overrides = [], int $offset = null): self
+    {
+        $found = $owner->payments()->firstWhere('mollie_payment_id', $payment->id);
+        if ($found) {
+            $amountChargedBack = $payment->amountChargedBack
+                ? (float)$payment->amountChargedBack->value
+                : 0.0;
+
+            $amountRefunded = $payment->amountRefunded
+                ? (float)$payment->amountRefunded->value
+                : 0.0;
+
+            $localActions = !empty($actions) ? $actions : $payment->metadata->actions ?? null;
+            $found->fill(array_merge([
+                'mollie_payment_id' => $payment->id,
+                'mollie_payment_status' => $payment->status,
+                'currency' => $payment->amount->currency,
+                'amount' => (float)$payment->amount->value,
+                'amount_refunded' => $amountRefunded,
+                'amount_charged_back' => $amountChargedBack,
+                'mollie_mandate_id' => $payment->mandateId,
+                'first_payment_actions' => $localActions,
+                'paymentable_offset'=>$offset
+            ], $overrides));
+            return $found;
+        }
+        return self::makeFromMolliePayment($payment, $owner, $billable, $actions, $overrides, $offset);
+    }
 
     /**
      * @param MolliePayment $payment
