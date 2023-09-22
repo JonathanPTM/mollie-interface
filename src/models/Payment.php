@@ -184,6 +184,12 @@ class Payment extends \Illuminate\Database\Eloquent\Model
         return $this->morphTo('billable');
     }
 
+    public function markAsPaid(){
+        $this->update([
+            'mollie_payment_status' => 'paid'
+        ]);
+    }
+
     /**
      * Find a Payment by the Mollie payment id, or create a new Payment record from a Mollie payment if not found.
      *

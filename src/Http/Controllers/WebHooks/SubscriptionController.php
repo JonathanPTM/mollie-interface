@@ -72,6 +72,7 @@ class SubscriptionController extends WebhookController
         $localPayment = Payment::makeOrFindFromMolliePayment($payment, $localSubscription, $localSubscription->billable);
 
         if ($payment->isPaid()){
+            $localPayment->markAsPaid();
             if ($query->has('fcp') && $query->get('fcp') === 'true' && !$mollieSubscription){
                 // Subscription needs to be created!
                 $mollieSubscription = (new MollieSubscriptionBuilder($localSubscription, $localSubscription->billable))->execute();
