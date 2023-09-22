@@ -56,7 +56,9 @@ class Payment extends \Illuminate\Database\Eloquent\Model
         'amount_refunded',
         'amount_charged_back',
         'paymentable_offset',
-        'notified_at'
+        'notified_at',
+        'billable_type',
+        'billable_id'
     ];
     /**
      * @param MolliePayment $payment

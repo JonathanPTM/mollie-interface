@@ -171,7 +171,9 @@ trait PaymentBuilder
             'currency' => $this->molliePayment->amount->currency,
             'amount' => $this->molliePayment->amount->value,
             'amount_refunded' => ($this->molliePayment->amountRefunded ? $this->molliePayment->amountRefunded->value : null),
-            'amount_charged_back' => ($this->molliePayment->amountChargedBack ? $this->molliePayment->amountChargedBack->value : null)
+            'amount_charged_back' => ($this->molliePayment->amountChargedBack ? $this->molliePayment->amountChargedBack->value : null),
+            'billable_type' => $this->owner->getMorphClass(),
+            'billable_id' => $this->owner->getKey(),
         ]);
     }
 }
