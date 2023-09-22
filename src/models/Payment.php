@@ -24,6 +24,7 @@
 namespace PTM\MollieInterface\models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Mollie\Api\Resources\Payment as MolliePayment;
 use Money\Currency;
 use Money\Money;
@@ -111,6 +112,8 @@ class Payment extends \Illuminate\Database\Eloquent\Model
             : 0.0;
 
         $localActions = !empty($actions) ? $actions : $payment->metadata->actions ?? null;
+
+        Log::debug("Payment billable id is {$billable->id}", [$billable->getMorphClass()]);
 
         return $owner->payments()->make(array_merge([
             'mollie_payment_id' => $payment->id,
