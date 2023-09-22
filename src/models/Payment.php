@@ -196,6 +196,18 @@ class Payment extends \Illuminate\Database\Eloquent\Model
     }
 
     /**
+     * @return bool
+     */
+    public function isPaid(){
+        return $this->mollie_payment_status === 'paid';
+    }
+
+    public function getStatusAttribute()
+    {
+        return $this->mollie_payment_status;
+    }
+
+    /**
      * Find a Payment by the Mollie payment id, or create a new Payment record from a Mollie payment if not found.
      *
      * @param \Mollie\Api\Resources\Payment $molliePayment
