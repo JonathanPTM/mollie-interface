@@ -46,6 +46,7 @@ class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder
         $this->taxPercentage = config('ptm_subscription.tax', 21);
         $this->interval = SubscriptionInterval::MONTHLY;
         $this->sequenceType = SequenceType::SEQUENCETYPE_FIRST;
+        $this->forceConfirmationPayment = true;
         $this->redirectUrl = null;
         if ($plan) $this->plan = $plan;
     }
@@ -140,5 +141,10 @@ class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder
         $this->interval = $interval;
         if ($this->plan) $this->total = $this->plan->mandatedAmountIncl($interval, $this->taxPercentage);
         return $this;
+    }
+
+    public function forceConfirmation(bool $enabled)
+    {
+        // Not needed, FirstPaymentSubscription has always forced Confirmation.
     }
 }

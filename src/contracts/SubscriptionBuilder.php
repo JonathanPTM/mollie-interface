@@ -79,4 +79,12 @@ interface SubscriptionBuilder
      * @return $this
      */
     public function setInterval(SubscriptionInterval $interval);
+
+    /**
+     * Force a payment before the subscription is created.
+     *
+     * @param bool $enabled
+     * @return mixed
+     */
+    public function forceConfirmation(bool $enabled);
 }
