@@ -51,6 +51,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
         'mollie_payment_id',
         'mollie_payment_status',
         'mollie_mandate_id',
+        'method',
         'currency',
         'amount',
         'amount_refunded',
@@ -88,6 +89,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
                 'amount_refunded' => $amountRefunded,
                 'amount_charged_back' => $amountChargedBack,
                 'mollie_mandate_id' => $payment->mandateId,
+                'method'=> $payment->method,
                 'first_payment_actions' => $localActions,
                 'paymentable_offset'=>$offset
             ], $overrides));
@@ -125,6 +127,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
             'amount_refunded' => $amountRefunded,
             'amount_charged_back' => $amountChargedBack,
             'mollie_mandate_id' => $payment->mandateId,
+            'method'=> $payment->method,
             'first_payment_actions' => $localActions,
             'paymentable_offset'=>$offset
         ], $overrides))->billable()->associate($billable);
@@ -227,6 +230,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
             'mollie_payment_id' => $molliePayment->id,
             'mollie_payment_status' => $molliePayment->status,
             'mollie_mandate_id' => $molliePayment->mandateId,
+            'method'=> $molliePayment->method,
             'currency' => $molliePayment->amount->currency,
             'amount' => $molliePayment->amount->value,
             'amount_refunded' => ($molliePayment->amountRefunded ? $molliePayment->amountRefunded->value : null),

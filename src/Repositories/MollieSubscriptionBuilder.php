@@ -53,7 +53,8 @@ class MollieSubscriptionBuilder implements Handler
         if (!$isMerged){
             $mollieSubscription = $this->owner->CustomerAPI()->createSubscription($this->subscription->toMollie(!$this->hasFirstPayment));
             $this->subscription->update([
-                'mollie_subscription_id'=>$mollieSubscription->id
+                'mollie_subscription_id'=>$mollieSubscription->id,
+                'mollie_mandate_id'=>$mollieSubscription->mandateId
             ]);
         } else {
             // Run Merge job!

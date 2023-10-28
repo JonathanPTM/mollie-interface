@@ -135,4 +135,9 @@ trait PTMBillable
         return $this->mollieCustomer->merge_subscriptions ?? false;
     }
 
+    public function getMandates(){
+        return $this->mollieCustomer->api()->mandates();
+    }
+    
+
 }

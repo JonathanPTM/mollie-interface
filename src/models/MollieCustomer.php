@@ -69,11 +69,16 @@ class MollieCustomer extends Model
         return $this->morphTo();
     }
 
+    public function api(): \Mollie\Api\Resources\Customer
+    {
+        return mollie()->customers()->get($this->mollie_customer_id);
+    }
+
     public function getMergedSubscription($offset=0): ?\Mollie\Api\Resources\Subscription
     {
         if (count($this->mollie_subscriptions) < ($offset+1)) return null;
         $id = $this->mollie_subscriptions[$offset];
         if (!$id) return null;
-        return mollie()->customers()->get($this->mollie_customer_id)->getSubscription($id);
+        return $this->api()->getSubscription($id);
     }
 }
