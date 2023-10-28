@@ -77,9 +77,13 @@ trait PTMBillable
                          * @var $mPay \Mollie\Api\Resources\Payment
                          */
                         $mPay = $payment->getMolliePayment();
-                        $checkout = $mPay->_links->checkout;
-                        if ($mPay->isOpen() && $checkout){
-                            return new Redirect($checkout->href);
+                        // Check if merge is the same as...
+                        if (!$mPay->metadata->merged
+                            || (($mPay->metadata->merged === 1) === $this->isMerged())){
+                            $checkout = $mPay->_links->checkout;
+                            if ($mPay->isOpen() && $checkout){
+                                return new Redirect($checkout->href);
+                            }
                         }
                     }
                 }
