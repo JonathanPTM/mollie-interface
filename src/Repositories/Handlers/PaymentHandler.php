@@ -50,7 +50,8 @@ class PaymentHandler implements Handler
         $localPayment = \PTM\MollieInterface\models\Payment::firstWhere('mollie_payment_id', $this->molliePayment->id);
         $localPayment->update(array_filter([
             'mollie_payment_status'=>$this->molliePayment->status,
-            'mollie_mandate_id'=>$this->molliePayment->mandateId
+            'mollie_mandate_id'=>$this->molliePayment->mandateId,
+            'method'=>$this->molliePayment->method
         ]));
         return $localPayment;
     }

@@ -57,7 +57,8 @@ class FirstPaymentHandler implements Handler
 
         $record->update([
             'mollie_payment_status'=>$this->molliePayment->status,
-            'mollie_mandate_id'=>$this->molliePayment->mandateId
+            'mollie_mandate_id'=>$this->molliePayment->mandateId,
+            'method'=>$this->molliePayment->method
         ]);
 
         if ($this->owner){

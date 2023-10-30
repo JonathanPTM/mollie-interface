@@ -213,17 +213,28 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         return $this;
     }
 
-    public function changePaymentMethod($method=null,$cardToken=null,$cost=0.25,$description=null){
-        $builder = new SimplePayment($this->billable, $cost, $description ?? "Change payment method");
+    /**
+     * @param $method
+     * @param $cardToken
+     * @param $cost
+     * @param $options
+     * @return array
+     * @throws Exception
+     */
+    public function changePaymentMethod($method=null, $cardToken=null, $cost=0.25, $options=[]): array
+    {
+        $builder = new SimplePayment($this->billable, $cost, "Change payment method", $options);
 
         if ($method) $builder->setMethod($method);
         if ($cardToken) $builder->setCardToken($cardToken);
 
         $builder->setSequenceType(SequenceType::SEQUENCETYPE_FIRST);
 
-        $builder->setWebhookUrl(route(route('ptm_mollie.webhook.payment.subscription.method', ['id'=>$this->id])));
+        $builder->setWebhookUrl(route('ptm_mollie.webhook.payment.subscription.method', ['id'=>$this->id]));
 
-        return $builder->create();
+        $result = $builder->create();
+        $this->payments()->save($result['payment']);
+        return $result;
     }
 
     public function isActive(){

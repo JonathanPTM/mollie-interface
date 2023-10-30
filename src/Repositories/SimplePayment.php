@@ -67,7 +67,7 @@ class SimplePayment
         // Create mollie payment
         $this->molliePayment = mollie()->payments()->create($payload);
         // Connect payment to the subscription
-        $payment = Payment::create($this->getPaymentPayload());
+        $payment = Payment::make($this->getPaymentPayload());
         // Return payment object
         return ['mollie'=>$this->molliePayment, 'payment'=>$payment];
     }
