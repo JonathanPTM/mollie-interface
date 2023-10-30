@@ -24,35 +24,55 @@
 namespace PTM\MollieInterface\Repositories\Handlers;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Log;
 use Mollie\Api\Resources\Payment;
 use PTM\MollieInterface\contracts\Handler;
+use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\traits\PTMBillable;
 
-class PaymentHandler implements Handler
+class PaymentMethodHandler implements Handler
 {
     /** @var PTMBillable */
     protected $owner;
 
     /** @var Payment */
     protected $molliePayment;
+    /** @var Subscription */
+    protected $subscription;
     /**
      * FirstPaymentHandler constructor.
      *
      * @param Payment $molliePayment
      */
-    public function __construct(Payment $molliePayment)
+    public function __construct(Payment $molliePayment, Subscription$subscription)
     {
         $this->molliePayment = $molliePayment;
+        $this->subscription = $subscription;
         $this->owner = $this->extractOwner();
     }
     public function execute()
     {
-        $localPayment = \PTM\MollieInterface\models\Payment::firstWhere('mollie_payment_id', $this->molliePayment->id);
-        $localPayment->update(array_filter([
-            'mollie_payment_status'=>$this->molliePayment->status,
-            'mollie_mandate_id'=>$this->molliePayment->mandateId
-        ]));
-        return $localPayment;
+        $user = $this->subscription->billable;
+        /**
+         * @var $customerAPI \Mollie\Api\Resources\Customer
+         */
+        $customerAPI = $user->mollieCustomer->api();
+        $mollieSubscription = $customerAPI->getSubscription($this->subscription->mollie_subscription_id);
+
+        try {
+            $this->subscription->update([
+                'mollie_mandate_id'=>$this->molliePayment->mandateId
+            ]);
+
+            $payload = $this->subscription->toMollie();
+            $newMollieSubscription = $customerAPI->createSubscription($payload);
+        } catch (\Exception $exception){
+            Log::error($exception);
+            return false;
+        }
+        // Destroy old subscription...
+        $mollieSubscription->cancel();
+        return true;
     }
 
     /**

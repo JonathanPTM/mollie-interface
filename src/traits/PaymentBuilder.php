@@ -48,7 +48,7 @@ trait PaymentBuilder
     /**
      * The Mollie PaymentMethod
      *
-     * @var array
+     * @var string
      */
     protected $method;
 
@@ -109,6 +109,10 @@ trait PaymentBuilder
      * @var String
      */
     protected $mollieCustomerId;
+    /**
+     * @var String
+     */
+    protected $cardToken;
 
     /**
      * @var bool
@@ -139,7 +143,8 @@ trait PaymentBuilder
         Log::debug("Mollie payload of: $this->total.");
         return array_filter(array_merge([
             'sequenceType' => $this->sequenceType,
-            'method' => $this->method,
+            'cardToken'=>$this->cardToken,
+            'method'=>$this->method,
             'customerId' => $this->mollieCustomerId ?? $this->owner->mollieCustomerId(),
             'description' => $this->description,
             'amount' => $this->money_to_mollie_array($this->total),
@@ -173,7 +178,7 @@ trait PaymentBuilder
             'amount_refunded' => ($this->molliePayment->amountRefunded ? $this->molliePayment->amountRefunded->value : null),
             'amount_charged_back' => ($this->molliePayment->amountChargedBack ? $this->molliePayment->amountChargedBack->value : null),
             'billable_type' => $this->owner->getMorphClass(),
-            'billable_id' => $this->owner->getKey(),
+            'billable_id' => $this->owner->getKey()
         ]);
     }
 }

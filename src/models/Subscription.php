@@ -27,9 +27,11 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Mollie\Api\Types\SequenceType;
 use PTM\MollieInterface\Events\SubscriptionCancelled;
 use PTM\MollieInterface\Events\SubscriptionChange;
 use PTM\MollieInterface\jobs\MergeSubscriptions;
+use PTM\MollieInterface\Repositories\SimplePayment;
 use PTM\MollieInterface\traits\PaymentMethodString;
 
 class Subscription extends \Illuminate\Database\Eloquent\Model
@@ -211,8 +213,25 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         return $this;
     }
 
+    public function changePaymentMethod($method=null,$cardToken=null,$cost=0.25,$description=null){
+        $builder = new SimplePayment($this->billable, $cost, $description ?? "Change payment method");
+
+        if ($method) $builder->setMethod($method);
+        if ($cardToken) $builder->setCardToken($cardToken);
+
+        $builder->setSequenceType(SequenceType::SEQUENCETYPE_FIRST);
+
+        $builder->setWebhookUrl(route(route('ptm_mollie.webhook.payment.subscription.method', ['id'=>$this->id])));
+
+        return $builder->create();
+    }
+
     public function isActive(){
         return $this->payments()->where('mollie_payment_status', 'paid')->exists();
+    }
+
+    public function mandatePayment(){
+        return $this->hasOne(Payment::class, 'mollie_mandate_id', 'mollie_mandate_id');
     }
 
     /**
@@ -230,7 +249,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
             'interval'=>$interval->toMollie(),
             'startDate'=> ($startNow ? now()->format('Y-m-d') : Carbon::parse($this->cycle_ends_at)->format('Y-m-d')),
             'description'=>($this->subscribed_on ?? $this->id)." - ".$this->plan->description,
-            'mandateId'=>$this->billable->mollieCustomer->mollie_mandate_id,
+            'mandateId'=>$this->mollie_mandate_id ?? $this->billable->mollieCustomer->mollie_mandate_id,
             'webhookUrl'=>route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $this->id]),
             'metadata'=>[
                 'subscribed_on'=>$this->subscribed_on,

@@ -31,6 +31,7 @@ Route::prefix('/landing')->name('ptm_mollie.')->group(function (){
         Route::prefix('/payment')->name('payment.')->group(function (){
             Route::any('/first', [\PTM\MollieInterface\Http\Controllers\WebHooks\FirstPaymentHookController::class, 'hooked'])->name('first');
             Route::any('/subscription', [\PTM\MollieInterface\Http\Controllers\WebHooks\SubscriptionController::class, 'hooked'])->name('subscription');
+            Route::any('/subscription/method/{id}', [\PTM\MollieInterface\Http\Controllers\WebHooks\PaymentMethodController::class, 'hooked'])->name('subscription.method');
             Route::any('/subscription/merged', [\PTM\MollieInterface\Http\Controllers\WebHooks\SubscriptionController::class, 'merged'])->name('subscription.merged');
             Route::any('/merge', [\PTM\MollieInterface\Http\Controllers\WebHooks\MergeController::class, 'hooked'])->name('merge');
             Route::any('/standalone', [\PTM\MollieInterface\Http\Controllers\WebHooks\PaymentController::class, 'hooked'])->name('standalone');

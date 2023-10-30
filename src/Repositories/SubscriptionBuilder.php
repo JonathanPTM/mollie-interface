@@ -154,6 +154,7 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
     public function forceConfirmation(bool $enabled)
     {
         $this->forceConfirmationPayment = $enabled;
+        $this->sequenceType = SequenceType::SEQUENCETYPE_FIRST;
         return $this;
     }
 
