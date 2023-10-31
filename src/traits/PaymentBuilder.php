@@ -129,7 +129,7 @@ trait PaymentBuilder
     {
         return [
             'currency' => "EUR",
-            'value' => number_format($money, 2, '.')
+            'value' => number_format($money, 2, '.', '')
         ];
     }
 
