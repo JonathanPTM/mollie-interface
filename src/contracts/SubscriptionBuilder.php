@@ -36,7 +36,7 @@ interface SubscriptionBuilder
      * @param array $options
      * @return static
      */
-    public static function fromPlan(Model $billable, Plan $plan, array $options = []);
+    public static function fromPlan(Model $billable, Plan $plan, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, array $options = []);
 
     /**
      * Create a new subscription. Returns a redirect to checkout if necessary.
