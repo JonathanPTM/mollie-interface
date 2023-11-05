@@ -59,7 +59,7 @@ trait PaymentMethodString
     {
         return [
             'currency' => "EUR",//$money->getCurrency()->getCode(),
-            'value' => number_format($money, 2, '.')//$moneyFormatter->format($money),
+            'value' => number_format($money, 2, '.', '')//$moneyFormatter->format($money),
         ];
     }
 

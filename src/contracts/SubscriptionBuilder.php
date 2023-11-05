@@ -87,4 +87,6 @@ interface SubscriptionBuilder
      * @return mixed
      */
     public function forceConfirmation(bool $enabled);
+
+    public function setRedirectURL(string $url);
 }
