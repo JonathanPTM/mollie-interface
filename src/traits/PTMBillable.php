@@ -23,6 +23,7 @@
 
 namespace PTM\MollieInterface\traits;
 
+
 use PTM\MollieInterface\contracts\SubscriptionBuilder;
 use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Plan;
