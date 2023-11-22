@@ -42,11 +42,13 @@ class Plan extends Model
         'name',
         'description',
         'amount',
-        'intervals'
+        'intervals',
+        'metadata'
     ];
 
     protected $casts = [
-        'intervals' => 'object'
+        'intervals' => 'object',
+        'metadata' => 'object'
     ];
 
     public static function cheapest()

@@ -19,6 +19,7 @@ class CreatePtmPlansTable extends Migration
             $table->text('description');
             $table->double('amount');
             $table->json('intervals')->default('{}');
+            $table->json('metadata')->default('{}');
             $table->timestamps();
         });
     }
