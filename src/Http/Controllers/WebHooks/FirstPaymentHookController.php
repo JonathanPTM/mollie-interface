@@ -49,6 +49,7 @@ class FirstPaymentHookController extends WebhookController
             Event::dispatch(new PaymentPaid($payment, $order));
         } else {
             if (!$payment->isOpen() && isset($payment->metadata->subscription)){
+                // ToDo: fix loop. year --> month
                 if ($subscription = Subscription::find($payment->metadata->subscription)) {
                     $subscription->delete();
                 }
