@@ -25,6 +25,7 @@ namespace PTM\MollieInterface\models;
 
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Mollie\Api\Types\SequenceType;
@@ -36,7 +37,7 @@ use PTM\MollieInterface\traits\PaymentMethodString;
 
 class Subscription extends \Illuminate\Database\Eloquent\Model
 {
-    use \Illuminate\Database\Eloquent\Factories\HasFactory, PaymentMethodString;
+    use \Illuminate\Database\Eloquent\Factories\HasFactory, PaymentMethodString, SoftDeletes;
 
     protected $table = 'ptm_subscriptions';
 

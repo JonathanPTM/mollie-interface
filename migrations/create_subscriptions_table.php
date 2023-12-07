@@ -25,6 +25,7 @@ class CreatePtmSubscriptionsTable extends Migration
             $table->datetime('cycle_started_at');
             $table->datetime('cycle_ends_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

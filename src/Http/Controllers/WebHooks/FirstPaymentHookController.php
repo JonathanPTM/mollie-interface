@@ -26,6 +26,7 @@ namespace PTM\MollieInterface\Http\Controllers\WebHooks;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use PTM\MollieInterface\Events\FirstPaymentFailed;
 use PTM\MollieInterface\Events\FirstPaymentPaid;
 use PTM\MollieInterface\Events\PaymentPaid;
@@ -50,7 +51,8 @@ class FirstPaymentHookController extends WebhookController
         } else {
             if (!$payment->isOpen() && isset($payment->metadata->subscription)){
                 if ($subscription = Subscription::find($payment->metadata->subscription)) {
-                    $subscription->delete();
+                    Log::info("Betaling is vervallen. Sub: {$subscription->id}, Pay: {$payment->id}");
+//                    $subscription->delete();
                 }
             }
             Event::dispatch(new FirstPaymentFailed($payment));
