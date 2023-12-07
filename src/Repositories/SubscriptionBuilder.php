@@ -25,30 +25,43 @@ namespace PTM\MollieInterface\Repositories;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
+use Mollie\Api\Exceptions\ApiException;
 use Mollie\Api\Types\SequenceType;
 use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\SubscriptionInterval;
-use PTM\MollieInterface\traits\PaymentBuilder;
+use PTM\MollieInterface\Builders\PaymentBuilder;
 
 class SubscriptionBuilder implements \PTM\MollieInterface\contracts\SubscriptionBuilder
 {
-    use PaymentBuilder;
+    use \PTM\MollieInterface\traits\SubscriptionBuilder;
     private $thread;
-    public function __construct(Model $owner, float $total, string $description, array $options = [], ?Plan $plan = null)
+    public PaymentBuilder $builder;
+    private Plan $plan;
+    public function __construct(Model $owner = null, float $total = 0, string $description = "", array $options = [], ?Plan $plan = null)
     {
+        $builder = new PaymentBuilder();
+        $builder->owner = $owner;
         $this->owner = $owner;
-        $this->total = $total;
-        $this->options = $options;
-        $this->description = $description;
-        $this->merging = $owner->isMerged();
-        $this->taxPercentage = config('ptm_subscription.tax', 21);
-        $this->interval = SubscriptionInterval::MONTHLY;
-        $this->sequenceType = SequenceType::SEQUENCETYPE_ONEOFF;
+        $builder->total = $total;
+        $builder->options = $options;
+        $builder->description = $description;
+        $builder->merging = $owner->isMerged();
+        $builder->taxPercentage = config('ptm_subscription.tax', 21);
+        $builder->interval = SubscriptionInterval::MONTHLY;
+        $builder->sequenceType = SequenceType::SEQUENCETYPE_ONEOFF;
         $this->forceConfirmationPayment = false;
-        $this->redirectUrl = url('');
-        if ($plan) $this->plan = $plan;
+        $builder->redirectUrl = url('');
+        if ($plan) $builder->setPlan($plan);
+        $this->builder = $builder;
+    }
+
+    /**
+     * @return PaymentBuilder
+     */
+    public function getPaymentBuilder(): PaymentBuilder
+    {
+        return $this->builder;
     }
 
     public static function fromPlan(Model $billable, Plan $plan, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, array $options = [])
@@ -56,61 +69,70 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
         return new self($billable, $plan->mandatedAmountIncl($interval, env('SUBSCRIPTION_TAX', 21)), $plan->description, $options, $plan);
     }
 
+    /**
+     * @throws ApiException
+     */
     public function create()
+    {
+
+        if (!$this->owner->mollieCustomer || !$this->owner->mollieCustomer->mollie_mandate_id) {
+            throw new \Exception("Mollie customer doesn't have mandateID!");
+        }
+        // Create subscription entry
+        $subscription = $this->buildSubscription();
+        // Check if confirmation payment is required or if
+        // customer is merging subscriptions.
+        if ($this->forceConfirmationPayment || $this->builder->merging){
+
+            if ($this->builder->merging){
+                // Change variables to merge
+                // Calculate amount to pay in difference
+                $interval = $this->builder->interval;
+                $normalDistance = now()->addMonth()->firstOfMonth()->diffInDays(now()->firstOfMonth());
+                $currentDistance = $interval->nextDate()->firstOfMonth()->diffInDays(now());
+                $this->builder->total = ($this->builder->total / $normalDistance) * $currentDistance;
+                // Set description
+                $this->builder->description = "Amount difference for merge. '{$this->builder->description}'";
+            }
+
+            $payment = $this->builder->create();
+            $subscription->payments()->save($payment);
+            // Return payment object
+            return $this->builder->molliePayment;
+        }
+        // Or just create subscription using mandate
+        return (new MollieSubscriptionBuilder($subscription, $this->owner))->execute();
+    }
+
+    public function executeOrder()
     {
         if (!$this->owner->mollieCustomer || !$this->owner->mollieCustomer->mollie_mandate_id) {
             throw new \Exception("Mollie customer doesn't have mandateID!");
         }
         // Create subscription entry
         $subscription = $this->buildSubscription();
-
-        // Check if confirmation payment is required or if
-        // customer is merging subscriptions.
-        if ($this->forceConfirmationPayment || $this->merging){
-
-            if ($this->merging){
-                // Change variables to merge
-                // Calculate amount to pay in difference
-                $interval = $this->interval;
-                $normalDistance = now()->addMonth()->firstOfMonth()->diffInDays(now()->firstOfMonth());
-                $currentDistance = $interval->nextDate()->firstOfMonth()->diffInDays(now());
-                $this->total = ($this->total / $normalDistance) * $currentDistance;
-                // Set description
-                $this->description = "Amount difference for merge. '{$this->description}'";
-            }
-
-            // Get payment variables
-            $payload = $this->getMolliePayload();
-            // Create mollie payment
-            $this->molliePayment = Mollie::api()->payments()->create($payload);
-            // Connect payment to the subscription
-            $subscription->payments()->create($this->getPaymentPayload());
-            // Return payment object
-            return $this->molliePayment;
-        }
-        // Or just create subscription using mandate
         return (new MollieSubscriptionBuilder($subscription, $this->owner))->execute();
     }
 
     private function buildSubscription(){
         $subscription = $this->owner->subscriptions()->create([
             'subscribed_on' => $this->thread,
-            'plan_id' => $this->plan->id ?? 0,
-            'tax_percentage' => $this->taxPercentage ?? 0,
+            'plan_id' => $this->builder->getPlan()->id ?? 0,
+            'tax_percentage' => $this->builder->taxPercentage ?? 0,
             'ends_at' => null,
-            'cycle'=>$this->interval->value,
+            'cycle'=>$this->builder->interval->value,
             'cycle_started_at' => now(),
-            'cycle_ends_at' => $this->interval->nextDate()
+            'cycle_ends_at' => $this->builder->interval->nextDate()
         ]);
         $this->subscriptionID = $subscription->id;
         $this->webhookUrl = route(
-            $this->merging ?
+            $this->builder->merging ?
                 'ptm_mollie.webhook.payment.merge' :
                 'ptm_mollie.webhook.payment.subscription',
             [
                 'subscription_id' => $subscription->id,
-                'fcp'=>($this->forceConfirmationPayment || $this->merging) ? 'true' : 'false',
-                'merging'=>$this->merging ? 'true' : 'false'
+                'fcp'=>($this->forceConfirmationPayment || $this->builder->merging) ? 'true' : 'false',
+                'merging'=>$this->builder->merging ? 'true' : 'false'
             ]);
         return $subscription;
     }
@@ -123,50 +145,48 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
 
     public function redirect(): ?string
     {
-        if ($this->molliePayment) return $this->molliePayment->redirectUrl;
-        return null;
+        return $this->builder->redirect();
     }
 
     public function setTax(int $tax)
     {
-        $base_price = ($this->total / (100 + $this->taxPercentage)) * 100;
-        if ($tax === 0){
-            $this->taxPercentage = 0;
-            $this->total = $base_price;
-            return $this;
-        }
-        $this->taxPercentage = ($tax > 1 ? $tax : ($tax > 0 ? ($tax * 100) : 0));
-        $this->total = $base_price * (1 + ($this->taxPercentage / 100));
+        $this->builder->setTax($tax);
         return $this;
     }
 
     public function setRedirectURL(string $url){
-        $this->redirectUrl = $url;
+        $this->builder->setRedirectURL($url);
         return $this;
     }
 
     public function setOptions($options)
     {
-        $this->options = $options;
+        $this->builder->setOptions($options);
         return $this;
     }
 
     public function forceConfirmation(bool $enabled)
     {
         $this->forceConfirmationPayment = $enabled;
-        $this->sequenceType = SequenceType::SEQUENCETYPE_FIRST;
+        $this->builder->setSequenceType(SequenceType::SEQUENCETYPE_FIRST);
         return $this;
     }
 
     public function setInterval(SubscriptionInterval $interval)
     {
         $this->interval = $interval;
-        if ($this->plan) $this->total = $this->plan->mandatedAmountIncl($interval, $this->taxPercentage ?? env('SUBSCRIPTION_TAX', 21));
+        $this->builder->setInterval($interval);
+        $this->builder->calculateTotal();
         return $this;
     }
 
     public function nextPaymentAt(Carbon $nextPaymentAt)
     {
         // TODO: Implement nextPaymentAt() method.
+    }
+
+    public function mustConfirmPayment(): bool
+    {
+        return $this->forceConfirmationPayment;
     }
 }

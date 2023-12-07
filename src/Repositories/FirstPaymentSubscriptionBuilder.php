@@ -24,6 +24,7 @@
 namespace PTM\MollieInterface\Repositories;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Queue\SerializesModels;
 use Mollie\Api\Types\SequenceType;
 use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\contracts\SubscriptionBuilder;
@@ -31,9 +32,9 @@ use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\SubscriptionInterval;
 use PTM\MollieInterface\traits\PaymentBuilder;
 
-class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder
+class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder, \PTM\MollieInterface\contracts\PaymentBuilder
 {
-    use PaymentBuilder;
+    use PaymentBuilder, SerializesModels;
 
     private $thread;
 
@@ -147,5 +148,15 @@ class FirstPaymentSubscriptionBuilder implements SubscriptionBuilder
     public function forceConfirmation(bool $enabled)
     {
         // Not needed, FirstPaymentSubscription has always forced Confirmation.
+    }
+
+    public function executeOrder()
+    {
+        // TODO: Implement executeOrder() method.
+    }
+
+    public function mustConfirmPayment(): bool
+    {
+        return $this->forceConfirmationPayment;
     }
 }

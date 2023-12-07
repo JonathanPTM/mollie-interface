@@ -7,7 +7,7 @@ use Mollie\Api\Types\SequenceType;
 use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\traits\PaymentBuilder;
 
-class SimplePayment
+class SimplePayment implements \PTM\MollieInterface\contracts\PaymentBuilder
 {
     use PaymentBuilder;
     public function __construct(Model $owner, float $total, string $description, array $options = [])

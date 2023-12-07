@@ -22,6 +22,7 @@
  */
 
 use Illuminate\Support\Facades\Route;
+use PTM\MollieInterface\Http\Controllers\WebHooks\Order\OrderPaymentController;
 
 Route::prefix('/landing')->name('ptm_mollie.')->group(function (){
     Route::prefix('/redirect')->name('redirect.')->group(function (){
@@ -36,6 +37,10 @@ Route::prefix('/landing')->name('ptm_mollie.')->group(function (){
             Route::any('/merge', [\PTM\MollieInterface\Http\Controllers\WebHooks\MergeController::class, 'hooked'])->name('merge');
             Route::any('/standalone', [\PTM\MollieInterface\Http\Controllers\WebHooks\PaymentController::class, 'hooked'])->name('standalone');
             Route::any('/', [\PTM\MollieInterface\Http\Controllers\WebHooks\AftercareController::class, 'hooked'])->name('after');
+        });
+
+        Route::prefix('/order/{order}')->name('order.')->group(function (){
+            Route::any('/payment', [OrderPaymentController::class, 'hooked'])->name('payment');
         });
     });
 });

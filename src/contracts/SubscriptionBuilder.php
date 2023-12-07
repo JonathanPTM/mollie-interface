@@ -46,6 +46,13 @@ interface SubscriptionBuilder
     public function create();
 
     /**
+     * Create a new subscription model and mollie subscription.
+     * This function is called upon by an order action.
+     * @return mixed
+     */
+    public function executeOrder();
+
+    /**
      * Override the default next payment date.
      *
      * @param \Carbon\Carbon $nextPaymentAt
@@ -88,5 +95,23 @@ interface SubscriptionBuilder
      */
     public function forceConfirmation(bool $enabled);
 
+    public function mustConfirmPayment(): bool;
+
     public function setRedirectURL(string $url);
+
+    public function getPaymentBuilder(): PaymentBuilder;
+
+    /**
+     * Prepare the instance values for serialization.
+     *
+     * @return array
+     */
+    public function __serialize();
+    /**
+     * Restore the model after serialization.
+     *
+     * @param  array  $values
+     * @return void
+     */
+    public function __unserialize(array $values);
 }

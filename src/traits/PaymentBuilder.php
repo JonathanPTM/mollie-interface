@@ -120,6 +120,14 @@ trait PaymentBuilder
     protected $merging;
 
     /**
+     * @param string $webhookUrl
+     */
+    public function setWebhookUrl(string $webhookUrl): void
+    {
+        $this->webhookUrl = $webhookUrl;
+    }
+
+    /**
      * Create a Mollie Amount array from a Money object.
      *
      * @param float
@@ -180,5 +188,19 @@ trait PaymentBuilder
             'billable_type' => $this->owner->getMorphClass(),
             'billable_id' => $this->owner->getKey()
         ]);
+    }
+
+    /**
+     * @return \Mollie\Api\Resources\Payment|null
+     */
+    public function getMolliePayment(): ?\Mollie\Api\Resources\Payment
+    {
+        return $this->molliePayment;
+    }
+
+    public function redirect(): ?string
+    {
+        if ($this->molliePayment) return $this->molliePayment->redirectUrl;
+        return null;
     }
 }
