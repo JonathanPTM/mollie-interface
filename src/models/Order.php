@@ -51,15 +51,25 @@ class Order extends Model
         'actions' => 'array',
     ];
 
+    /**
+     * The parent model of this order.
+     * Most of the time this will be the billable like a use or company.
+     * @return \Illuminate\Database\Eloquent\Relations\MorphTo
+     */
     public function billable(){
         return $this->morphTo('billable');
     }
 
+    /**
+     * The model that triggered this order to be completed, might be empty.
+     * @return \Illuminate\Database\Eloquent\Relations\MorphTo
+     */
     public function confirmatable(){
         return $this->morphTo('confirmatable');
     }
 
     /**
+     * Add an executable laravel job that will be run after the order is completed.
      * @param ShouldQueue $job
      * @return void
      */
@@ -68,6 +78,7 @@ class Order extends Model
     }
 
     /**
+     * Set the array of executable laravel jobs that are serializable.
      * @param array|null $actions
      * @return void
      */
@@ -75,6 +86,10 @@ class Order extends Model
         $this->actions = $actions;
     }
 
+    /**
+     * Get a OrderBuilder instance.
+     * @return OrderBuilder
+     */
     public static function Builder(){
         return new OrderBuilder();
     }

@@ -37,6 +37,7 @@ class MollieInterfaceServiceProvider extends ServiceProvider
                     __DIR__ . '/../migrations/create_payments_table.php' => database_path('migrations/' . date('Y_m_d_His', time()) . '_create_ptm_payments_table.php'),
                     __DIR__ . '/../migrations/create_plans_table.php' => database_path('migrations/' . date('Y_m_d_His', time()) . '_create_ptm_plans_table.php'),
                     __DIR__ . '/../migrations/create_subscriptions_table.php' => database_path('migrations/' . date('Y_m_d_His', time()) . '_create_ptm_subscriptions_table.php'),
+                    __DIR__ . '/../migrations/create_orders_table.php' => database_path('migrations/' . date('Y_m_d_His', time()) . '_create_ptm_orders_table.php'),
                 ], 'migrations');
             }
             $this->publishes([

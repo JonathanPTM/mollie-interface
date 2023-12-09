@@ -40,7 +40,7 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
     private Plan $plan;
     public function __construct(Model $owner = null, float $total = 0, string $description = "", array $options = [], ?Plan $plan = null)
     {
-        $builder = new PaymentBuilder();
+        $builder = new PaymentBuilder($total);
         $builder->owner = $owner;
         $this->owner = $owner;
         $builder->total = $total;

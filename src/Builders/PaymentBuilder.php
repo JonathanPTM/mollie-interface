@@ -13,9 +13,9 @@ class PaymentBuilder implements \PTM\MollieInterface\contracts\PaymentBuilder
 
     private Plan $plan;
 
-    public function __construct(float $total)
+    public function __construct(?float $total)
     {
-        $this->total = $total;
+        $this->total = $total ?? 0;
         $this->taxPercentage = env('SUBSCRIPTION_TAX', 21);
     }
 
