@@ -48,6 +48,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
      * @var array
      */
     protected $fillable = [
+        'order_id',
         'mollie_payment_id',
         'mollie_payment_status',
         'mollie_mandate_id',
@@ -59,7 +60,9 @@ class Payment extends \Illuminate\Database\Eloquent\Model
         'paymentable_offset',
         'notified_at',
         'billable_type',
-        'billable_id'
+        'billable_id',
+        'paymentable_type',
+        'paymentable_id'
     ];
     /**
      * @param MolliePayment $payment

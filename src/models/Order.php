@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use PTM\MollieInterface\Builders\OrderBuilder;
+use ReflectionClass;
 
 class Order extends Model
 {
@@ -74,7 +75,9 @@ class Order extends Model
      * @return void
      */
     public function addAction(ShouldQueue $job){
-        $this->actions[] = ['class'=>$job->getMorphClass(),'context'=>$job->__serialize()];
+        $actions = (array)$this->actions;
+        $actions[] = ['class'=>$job::class,'context'=>serialize($job)];
+        $this->setActions($actions);
     }
 
     /**
@@ -84,6 +87,48 @@ class Order extends Model
      */
     public function setActions(?array $actions){
         $this->actions = $actions;
+    }
+
+    /**
+     * Get an array of the actions.
+     * @return array
+     * @throws \ReflectionException
+     */
+    public function getActions(){
+        $actions = (array)$this->actions;
+        if (count($actions) < 1) return [];
+        $unserialized = [];
+        foreach ($actions as $action){
+            $job = unserialize($action['context']);
+            $unserialized[] = $job;
+        }
+        return $unserialized;
+    }
+
+    /**
+     * @return bool
+     * @throws \ReflectionException
+     */
+    public function executeActions($force=false): bool
+    {
+        if ($this->executed && !$force) return false;
+        foreach ($this->getActions() as $job){
+            $job->handle($this);
+        }
+        $this->update([
+            'executed'=>true
+        ]);
+        return true;
+    }
+
+    /**
+     * @param Model $confirmedBy
+     * @return void
+     */
+    public function confirm(Model $confirmedBy){
+        $this->confirmatable()->associate($confirmedBy);
+        $this->save();
+        $this->executeActions();
     }
 
     /**

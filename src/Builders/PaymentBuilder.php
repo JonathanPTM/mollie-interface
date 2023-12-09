@@ -50,6 +50,10 @@ class PaymentBuilder implements \PTM\MollieInterface\contracts\PaymentBuilder
         return $this;
     }
 
+    public function setOrderID(string $id): void
+    {
+        $this->order_id = $id;
+    }
     /**
      * @param SequenceType $sequenceType
      */

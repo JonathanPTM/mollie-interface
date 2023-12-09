@@ -53,6 +53,13 @@ class PaymentHandler implements Handler
             'mollie_mandate_id'=>$this->molliePayment->mandateId,
             'method'=>$this->molliePayment->method
         ]));
+        if ($this->molliePayment->mandateId !== null){
+            if ($this->owner){
+                $this->owner->mollieCustomer()->update([
+                    'mollie_mandate_id'=>$this->molliePayment->mandateId
+                ]);
+            }
+        }
         return $localPayment;
     }
 

@@ -29,6 +29,12 @@ use PTM\MollieInterface\models\MollieCustomer;
 trait isMollieCustomer
 {
     /**
+     * @return bool
+     */
+    public function needsFirstPayment(){
+        return !(!empty($this->mollieCustomer) && !empty($this->mollieCustomer->mollie_mandate_id));
+    }
+    /**
      * Get the mollie customer.
      */
     public function mollieCustomer()
@@ -72,7 +78,7 @@ trait isMollieCustomer
     public function mollieCustomerFields()
     {
         return [
-            'id' => $this->id,
+            'name'=> $this->name,
             'email' => $this->email
         ];
     }

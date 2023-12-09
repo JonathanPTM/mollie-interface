@@ -36,17 +36,17 @@ class CreatePtmPaymentsTable extends Migration
     {
         Schema::create('ptm_payments', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('order_id')->nullable();
+            $table->uuid('order_id')->nullable();
             $table->string('mollie_payment_id');
             $table->string('mollie_payment_status');
             $table->string('mollie_mandate_id')->nullable();
-            $table->morphs('paymentable');
-            $table->morphs('billable');
+            $table->nullableUuidMorphs('paymentable');
+            $table->uuidMorphs('billable');
             $table->string('currency', 3);
+            $table->string('method')->nullable();
             $table->unsignedInteger('amount')->default(0);
             $table->unsignedInteger('amount_refunded')->default(0);
             $table->unsignedInteger('amount_charged_back')->default(0);
-            $table->text('first_payment_actions')->nullable();
             $table->timestamps();
         });
     }

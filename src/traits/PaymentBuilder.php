@@ -36,88 +36,98 @@ trait PaymentBuilder
      *
      * @var Model
      */
-    protected $owner;
+    public $owner;
 
     /**
      * Overrides the Mollie Payment payload
      *
      * @var array
      */
-    protected $options;
+    public $options;
 
     /**
      * The Mollie PaymentMethod
      *
      * @var string
      */
-    protected $method;
+    public $method;
 
     /**
      * Total amount of the payment
      *
      * @var double
      */
-    protected $total;
+    public $total;
 
     /**
      * The payment description.
      *
      * @var string
      */
-    protected $description;
+    public $description;
 
     /**
      * @var string
      */
-    protected $redirectUrl;
+    public $redirectUrl;
 
     /**
      * @var string
      */
-    protected $webhookUrl;
+    public $webhookUrl;
 
     /**
      * @var \Mollie\Api\Resources\Payment|null
      */
-    protected $molliePayment;
+    public $molliePayment;
 
     /**
      * @var Payment|null
      */
-    protected $payment;
+    public $payment;
 
     /**
      * @var SequenceType
      */
-    protected $sequenceType;
+    public $sequenceType;
 
     /**
      * @var integer|null
      */
-    protected $taxPercentage;
+    public $taxPercentage;
 
     /**
      * @var integer|null
      */
-    protected $subscriptionID;
+    public $subscriptionID;
 
     /**
      * @var SubscriptionInterval
      */
-    protected $interval;
+    public $interval;
     /**
      * @var String
      */
-    protected $mollieCustomerId;
+    public $mollieCustomerId;
     /**
      * @var String
      */
-    protected $cardToken;
+    public $cardToken;
 
     /**
      * @var bool
      */
-    protected $merging;
+    public $merging;
+
+    /**
+     * @var string
+     */
+    public $order_id;
+
+    /**
+     * @var Model|null
+     */
+    public $paymentable;
 
     /**
      * @param string $webhookUrl
@@ -163,6 +173,7 @@ trait PaymentBuilder
                     'type' => $this->owner->getMorphClass(),
                     'id' => $this->owner->getKey(),
                 ],
+                'order_id' => $this->order_id,
                 'subscription' => $this->subscriptionID,
                 'merged' => $this->merging
             ],
@@ -178,6 +189,7 @@ trait PaymentBuilder
     {
         if (!$this->molliePayment) return null;
         return array_filter([
+            'order_id' => $this->order_id,
             'mollie_payment_id' => $this->molliePayment->id,
             'mollie_payment_status' => $this->molliePayment->status,
             'mollie_mandate_id' => $this->molliePayment->mandateId,
@@ -186,7 +198,9 @@ trait PaymentBuilder
             'amount_refunded' => ($this->molliePayment->amountRefunded ? $this->molliePayment->amountRefunded->value : null),
             'amount_charged_back' => ($this->molliePayment->amountChargedBack ? $this->molliePayment->amountChargedBack->value : null),
             'billable_type' => $this->owner->getMorphClass(),
-            'billable_id' => $this->owner->getKey()
+            'billable_id' => $this->owner->getKey(),
+            'paymentable_type' => $this->paymentable?->getMorphClass(),
+            'paymentable_id' => $this->paymentable?->getKey()
         ]);
     }
 

@@ -38,7 +38,7 @@ trait PTMBillable
 
     public function subscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, $forceConfirmationPayment=false): SubscriptionBuilder
     {
-        if (!empty($this->mollieCustomer) && !empty($this->mollieCustomer->mollie_mandate_id)) {
+        if (!$this->needsFirstPayment()) {
             return \PTM\MollieInterface\Repositories\SubscriptionBuilder::fromPlan($this, $plan, $interval)->subscribedOn($subscribed_on)->forceConfirmation($forceConfirmationPayment);
         }
         return FirstPaymentSubscriptionBuilder::fromPlan($this, $plan, $interval)->subscribedOn($subscribed_on);
