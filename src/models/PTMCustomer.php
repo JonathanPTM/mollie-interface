@@ -26,7 +26,7 @@ namespace PTM\MollieInterface\models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class MollieCustomer extends Model
+class PTMCustomer extends Model
 {
     use HasFactory;
 
@@ -49,16 +49,17 @@ class MollieCustomer extends Model
     protected $fillable = [
         'billable_type',
         'billable_id',
-        'mollie_customer_id',
-        'mollie_mandate_id',
-        'merge_subscriptions',
-        'mollie_subscriptions',
+        'interface',
+        'customer_id',
+        'mandate_id',
+        'merged',
+        'subscriptions',
         'trial_ends_at',
         'extra_billing_information'
     ];
 
     protected $casts = [
-        'mollie_subscriptions'=>'array'
+        'subscriptions'=>'array'
     ];
 
     /**
