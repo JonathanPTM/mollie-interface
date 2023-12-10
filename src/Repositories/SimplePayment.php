@@ -4,10 +4,11 @@ namespace PTM\MollieInterface\Repositories;
 
 use Illuminate\Database\Eloquent\Model;
 use Mollie\Api\Types\SequenceType;
+use PTM\MollieInterface\Builders\Builder;
 use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\traits\PaymentBuilder;
 
-class SimplePayment implements \PTM\MollieInterface\contracts\PaymentBuilder
+class SimplePayment extends Builder implements \PTM\MollieInterface\contracts\PaymentBuilder
 {
     use PaymentBuilder;
     public function __construct(Model $owner, float $total, string $description, array $options = [])
@@ -100,5 +101,10 @@ class SimplePayment implements \PTM\MollieInterface\contracts\PaymentBuilder
     {
         $this->options = $options;
         return $this;
+    }
+
+    public function setOrderID(string $id): void
+    {
+        // TODO: Implement setOrderID() method.
     }
 }

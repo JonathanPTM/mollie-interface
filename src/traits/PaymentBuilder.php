@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Mollie\Api\Types\SequenceType;
 use PTM\MollieInterface\models\Payment;
+use PTM\MollieInterface\models\Redirect;
 use PTM\MollieInterface\models\SubscriptionInterval;
 
 trait PaymentBuilder
@@ -79,7 +80,7 @@ trait PaymentBuilder
     /**
      * @var \Mollie\Api\Resources\Payment|null
      */
-    public $molliePayment;
+    public $processorPayment;
 
     /**
      * @var Payment|null
@@ -138,83 +139,37 @@ trait PaymentBuilder
     }
 
     /**
-     * Create a Mollie Amount array from a Money object.
-     *
-     * @param float
-     * @return array $array
-     */
-    private function money_to_mollie_array(float $money)
-    {
-        return [
-            'currency' => "EUR",
-            'value' => number_format($money, 2, '.', '')
-        ];
-    }
-
-    /**
-     * Build the Mollie Payment Payload
-     *
-     * @return array
-     */
-    public function getMolliePayload(): array
-    {
-        Log::debug("Mollie payload of: $this->total.");
-        return array_filter(array_merge([
-            'sequenceType' => $this->sequenceType,
-            'cardToken'=>$this->cardToken,
-            'method'=>$this->method,
-            'customerId' => $this->mollieCustomerId ?? $this->owner->mollieCustomerId(),
-            'description' => $this->description,
-            'amount' => $this->money_to_mollie_array($this->total),
-            'webhookUrl' => $this->webhookUrl,
-            'redirectUrl' => $this->redirectUrl,
-            'metadata' => [
-                'owner' => [
-                    'type' => $this->owner->getMorphClass(),
-                    'id' => $this->owner->getKey(),
-                ],
-                'order_id' => $this->order_id,
-                'subscription' => $this->subscriptionID,
-                'merged' => $this->merging
-            ],
-        ], $this->options));
-    }
-
-    /**
      * Build the payment column values
      *
-     * @return null
+     * @return array|null
      */
-    public function getPaymentPayload()
+    public function getPaymentPayload(): array|null
     {
-        if (!$this->molliePayment) return null;
-        return array_filter([
-            'order_id' => $this->order_id,
-            'mollie_payment_id' => $this->molliePayment->id,
-            'mollie_payment_status' => $this->molliePayment->status,
-            'mollie_mandate_id' => $this->molliePayment->mandateId,
-            'currency' => $this->molliePayment->amount->currency,
-            'amount' => $this->molliePayment->amount->value,
-            'amount_refunded' => ($this->molliePayment->amountRefunded ? $this->molliePayment->amountRefunded->value : null),
-            'amount_charged_back' => ($this->molliePayment->amountChargedBack ? $this->molliePayment->amountChargedBack->value : null),
-            'billable_type' => $this->owner->getMorphClass(),
-            'billable_id' => $this->owner->getKey(),
-            'paymentable_type' => $this->paymentable?->getMorphClass(),
-            'paymentable_id' => $this->paymentable?->getKey()
-        ]);
+        if (!$this->processorPayment) return null;
+        return array_filter(array_merge(
+            $this->getInterface()->paymentToDatabase($this->processorPayment),
+            [
+                'order_id' => $this->order_id,
+                'billable_type' => $this->owner->getMorphClass(),
+                'billable_id' => $this->owner->getKey(),
+                'paymentable_type' => $this->paymentable?->getMorphClass(),
+                'paymentable_id' => $this->paymentable?->getKey()
+            ]
+        ));
     }
 
     /**
      * @return \Mollie\Api\Resources\Payment|null
      */
-    public function getMolliePayment(): ?\Mollie\Api\Resources\Payment
+    public function getProcessorPayment(): ?\Mollie\Api\Resources\Payment
     {
-        return $this->molliePayment;
+        return $this->processorPayment;
     }
 
-    public function redirect(): ?string
+    public function redirect(): ?Redirect
     {
-        if ($this->molliePayment) return $this->molliePayment->redirectUrl;
+        if ($this->processorPayment)
+            return $this->getInterface()->getRedirect($this->processorPayment);
         return null;
     }
 }

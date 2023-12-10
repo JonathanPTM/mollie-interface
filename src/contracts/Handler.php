@@ -25,5 +25,5 @@ namespace PTM\MollieInterface\contracts;
 
 interface Handler
 {
-    public function execute();
+    public function execute(PaymentProcessor $interface);
 }

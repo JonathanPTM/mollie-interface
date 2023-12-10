@@ -254,22 +254,4 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         return $this->plan->mandatedAmountIncl($this->getInterval(), $this->tax_percentage);
     }
 
-    public function toMollie($startNow=false){
-        $interval = $this->getInterval();
-        return [
-            'amount'=>$this->money_to_mollie_array($this->getAmount()),
-            'interval'=>$interval->toMollie(),
-            'startDate'=> ($startNow ? now()->format('Y-m-d') : Carbon::parse($this->cycle_ends_at)->format('Y-m-d')),
-            'description'=>($this->subscribed_on ?? $this->id)." - ".$this->plan->description,
-            'mandateId'=>$this->mollie_mandate_id ?? $this->billable->mollieCustomer->mollie_mandate_id,
-            'webhookUrl'=>route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $this->id]),
-            'metadata'=>[
-                'subscribed_on'=>$this->subscribed_on,
-                'billable'=>[
-                    'type'=>$this->billable_type,
-                    'id'=>$this->billable_id
-                ]
-            ]
-        ];
-    }
 }

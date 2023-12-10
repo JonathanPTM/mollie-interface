@@ -24,7 +24,7 @@
 namespace PTM\MollieInterface\traits;
 
 use Mollie\Laravel\Facades\Mollie;
-use PTM\MollieInterface\models\MollieCustomer;
+use PTM\MollieInterface\models\PTMCustomer;
 
 trait isMollieCustomer
 {
@@ -32,14 +32,14 @@ trait isMollieCustomer
      * @return bool
      */
     public function needsFirstPayment(){
-        return !(!empty($this->mollieCustomer) && !empty($this->mollieCustomer->mollie_mandate_id));
+        return !$this->ptmCustomer()->whereNotNull('mandate_id')->exists();
     }
     /**
      * Get the mollie customer.
      */
-    public function mollieCustomer()
+    public function ptmCustomer()
     {
-        return $this->morphOne(MollieCustomer::class, 'billable');
+        return $this->morphMany(PTMCustomer::class, 'billable');
     }
 
     /**
@@ -47,13 +47,14 @@ trait isMollieCustomer
      *
      * @return string
      */
-    public function mollieCustomerId()
+    public function CustomerId($interface=null)
     {
-        if (!$this->mollieCustomer()->exists()) {
+        if (!$interface) $interface = config('ptm_subscriptions.default_processor');
+        if (!$this->ptmCustomer()->where('interface',$interface)->exists()) {
             return $this->createAsMollieCustomer()->id;
         }
 
-        return $this->mollieCustomer->mollie_customer_id;
+        return $this->ptmCustomer()->where('interface',$interface)->get()->customer_id;
     }
 
     /**
@@ -62,13 +63,15 @@ trait isMollieCustomer
      * @param array $override_options
      * @return \Mollie\Api\Resources\Customer
      */
-    public function createAsMollieCustomer(array $override_options = []): \Mollie\Api\Resources\Customer
+    public function createAsMollieCustomer(array $override_options = [], $interface=null): \Mollie\Api\Resources\Customer
     {
+        if (!$interface) $interface = config('ptm_subscriptions.default_processor');
         $options = array_merge($this->mollieCustomerFields(), $override_options);
 
         $customer = Mollie::api()->customers()->create($options);
 
-        $this->mollieCustomer()->updateOrCreate([
+        $this->ptmCustomer()->updateOrCreate([
+            'interface'=>$interface,
             'mollie_customer_id' => $customer->id
         ]);
 
@@ -83,9 +86,10 @@ trait isMollieCustomer
         ];
     }
 
-    public function mollieMandateId()
+    public function mollieMandateId($interface=null)
     {
-        return $this->mollieCustomer->mollie_mandate_id;
+        if (!$interface) $interface = config('ptm_subscriptions.default_processor');
+        return $this->ptmCustomer()->where('interface',$interface)->mollie_mandate_id;
     }
 
     /**
@@ -94,6 +98,6 @@ trait isMollieCustomer
      */
     public function CustomerAPI()
     {
-        return Mollie::api()->customers()->get($this->mollieCustomerId());
+        return Mollie::api()->customers()->get($this->CustomerId());
     }
 }

@@ -21,18 +21,17 @@
  *  SOFTWARE.
  */
 
-namespace PTM\MollieInterface\Repositories;
+namespace PTM\MollieInterface\Builders;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Mollie\Api\Exceptions\ApiException;
 use Mollie\Api\Types\SequenceType;
-use Mollie\Laravel\Facades\Mollie;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\SubscriptionInterval;
-use PTM\MollieInterface\Builders\PaymentBuilder;
+use PTM\MollieInterface\Repositories\MollieSubscriptionBuilder;
 
-class SubscriptionBuilder implements \PTM\MollieInterface\contracts\SubscriptionBuilder
+class SubscriptionBuilder extends Builder implements \PTM\MollieInterface\contracts\SubscriptionBuilder
 {
     use \PTM\MollieInterface\traits\SubscriptionBuilder;
     private $thread;
@@ -40,6 +39,7 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
     private Plan $plan;
     public function __construct(Model $owner = null, float $total = 0, string $description = "", array $options = [], ?Plan $plan = null)
     {
+        parent::__construct();
         $builder = new PaymentBuilder($total);
         $builder->owner = $owner;
         $this->owner = $owner;
@@ -98,7 +98,7 @@ class SubscriptionBuilder implements \PTM\MollieInterface\contracts\Subscription
             $payment = $this->builder->create();
             $subscription->payments()->save($payment);
             // Return payment object
-            return $this->builder->molliePayment;
+            return $this->builder->processorPayment;
         }
         // Or just create subscription using mandate
         return (new MollieSubscriptionBuilder($subscription, $this->owner))->execute();

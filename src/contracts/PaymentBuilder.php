@@ -2,14 +2,10 @@
 
 namespace PTM\MollieInterface\contracts;
 
+use PTM\MollieInterface\models\Redirect;
+
 interface PaymentBuilder
 {
-    /**
-     * Build the Mollie Payment Payload
-     *
-     * @return array
-     */
-    public function getMolliePayload(): array;
     /**
      * Build the payment column values
      *
@@ -18,6 +14,6 @@ interface PaymentBuilder
     public function getPaymentPayload();
     public function setOrderID(string $id): void;
     public function setWebhookUrl(string $webhookUrl): void;
-    public function getMolliePayment(): ?\Mollie\Api\Resources\Payment;
-    public function redirect(): ?string;
+    public function getProcessorPayment(): ?\Mollie\Api\Resources\Payment;
+    public function redirect(): ?Redirect;
 }

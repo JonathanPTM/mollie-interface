@@ -6,6 +6,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use PTM\MollieInterface\Builders\Builder;
 use PTM\MollieInterface\Builders\OrderBuilder;
 use ReflectionClass;
 
@@ -14,12 +15,15 @@ class Order extends Model
     use HasFactory;
     protected $table = 'ptm_orders';
 
+    private Builder $processor;
+
     /**
      * The attributes that are mass assignable.
      *
      * @var array
      */
     protected $fillable = [
+        'interface',
         'actions',
         'executed'
     ];
@@ -28,7 +32,19 @@ class Order extends Model
     {
         parent::__construct();
         $this->id = Str::uuid();
+        $this->processor = new Builder();
+        if ($this->interface !== null){
+            $this->processor->setInterface($this->interface);
+        }
     }
+
+    /**
+     * @return \PTM\MollieInterface\contracts\PaymentProcessor
+     */
+    public function getInterface(){
+        return $this->processor->getInterface();
+    }
+
     /**
      * Get the value indicating whether the IDs are incrementing.
      *

@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use PTM\MollieInterface\models\Order;
 
 class createSubscriptionAction implements ShouldQueue, ShouldBeUnique
 {
@@ -21,9 +22,10 @@ class createSubscriptionAction implements ShouldQueue, ShouldBeUnique
      *
      * @return void
      */
-    public function handle()
+    public function handle(Order$order)
     {
         $builder = $this->builder;
+        $builder->setInterface($order->getInterface());
         $builder->executeOrder();
     }
 

@@ -5,21 +5,22 @@ namespace PTM\MollieInterface\Builders;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use PTM\MollieInterface\Builders\SubscriptionBuilder as SubBuilder;
 use PTM\MollieInterface\contracts\PaymentBuilder;
 use PTM\MollieInterface\contracts\SubscriptionBuilder;
-use PTM\MollieInterface\models\Redirect;
-use PTM\MollieInterface\Repositories\SubscriptionBuilder as SubBuilder;
 use PTM\MollieInterface\jobs\createSubscriptionAction;
 use PTM\MollieInterface\models\Order;
 use PTM\MollieInterface\models\Plan;
+use PTM\MollieInterface\models\Redirect;
 
-class OrderBuilder implements \PTM\MollieInterface\contracts\OrderBuilder
+class OrderBuilder extends Builder implements \PTM\MollieInterface\contracts\OrderBuilder
 {
     public Order $order;
     public ?PaymentBuilder $payment = null;
 
     public function __construct()
     {
+        parent::__construct();
         $this->order = new Order();
     }
 
@@ -103,6 +104,7 @@ class OrderBuilder implements \PTM\MollieInterface\contracts\OrderBuilder
     public function build()
     {
         DB::beginTransaction();
+        $this->order->interface = $this->exportInterface();
         $this->order->save();
 
         // if there is a payment, create it. Store it. And return redirect.
@@ -110,7 +112,7 @@ class OrderBuilder implements \PTM\MollieInterface\contracts\OrderBuilder
             $payment = $this->payment->create();
             $payment->save();
             DB::commit();
-            return new Redirect($this->payment->molliePayment->getCheckoutUrl());
+            return $this->payment->redirect();
         }
         DB::commit();
         return $this->order;

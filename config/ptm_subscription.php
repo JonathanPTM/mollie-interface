@@ -24,5 +24,6 @@ return [
     'webhook_prefix' => 'payment/webhook',
     'tax' => 21,
     'bus' => 'developmentBus',
-    'break' => 990
+    'break' => 990,
+    'default_processor' => 'PTM\MollieInterface\Interfaces\MollieInterface'
 ];

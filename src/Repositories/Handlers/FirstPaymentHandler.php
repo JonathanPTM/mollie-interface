@@ -62,8 +62,8 @@ class FirstPaymentHandler implements Handler
         ]);
 
         if ($this->owner){
-            $this->owner->mollieCustomer()->update([
-                'mollie_mandate_id'=>$this->molliePayment->mandateId
+            $this->owner->ptmCustomer()->update([
+                'mandate_id'=>$this->molliePayment->mandateId
             ]);
         }
 

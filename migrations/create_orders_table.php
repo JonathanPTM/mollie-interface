@@ -17,6 +17,7 @@ class CreatePTMOrdersTable extends Migration
             $table->uuid('id')->primary();
             $table->uuidMorphs('billable');
             $table->nullableMorphs('confirmatable');
+            $table->text('interface')->nullable();
             $table->json('actions')->default('[]');
             $table->boolean('executed')->default(false);
             $table->timestamps();

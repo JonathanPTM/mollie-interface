@@ -17,7 +17,7 @@ class OrderPaymentController  extends WebhookController
     {
         $payment = $this->getMolliePaymentById($request->get('id'));
         if (!$payment) {
-            return response()->setStatusCode(404, "No payment was found.");
+            return response("No payment was found.", 404);
         }
         $localPayment = (new PaymentHandler($payment))->execute();
         if ($payment->isPaid()){
@@ -28,12 +28,12 @@ class OrderPaymentController  extends WebhookController
             // Execute order
             $order = Order::find($request->route('order'));
             if (!$order){
-                return response()->setStatusCode(404, "No order was found.");
+                return response("No order was found.", 402);
             }
             $order->confirm($localPayment);
         } else {
             Event::dispatch(new FirstPaymentFailed($payment));
         }
-        return response()->setStatusCode(200, "ok.");
+        return response("Ok", 200);
     }
 }

@@ -35,8 +35,11 @@ class CreatePtmMollieCustomersTable extends Migration
     {
         Schema::create('ptm_customers', function (Blueprint $table) {
             $table->morphs('billable');
-            $table->string('mollie_customer_id')->nullable();
-            $table->string('mollie_mandate_id')->nullable();
+            $table->text('interface')->nullable();
+            $table->string('customer_id')->nullable();
+            $table->string('mandate_id')->nullable();
+            $table->boolean('merged');
+            $table->json('subscriptions')->default('[]');
             $table->dateTime('trial_ends_at')->nullable();
             $table->text('extra_billing_information')->nullable();
             $table->timestamps();

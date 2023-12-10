@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
 use Mollie\Api\Resources\Payment;
 use PTM\MollieInterface\contracts\Handler;
+use PTM\MollieInterface\contracts\PaymentProcessor;
 use PTM\MollieInterface\Events\SubscriptionCreated;
 use PTM\MollieInterface\jobs\MergeSubscriptions;
 use PTM\MollieInterface\models\Subscription;
@@ -46,12 +47,16 @@ class MollieSubscriptionBuilder implements Handler
         $this->owner = $owner;
         $this->hasFirstPayment = $hasFirstPayment;
     }
-    public function execute()
+    public function execute(PaymentProcessor $interface)
     {
         $mollieSubscription = null;
         $isMerged = $this->owner->isMerged();
         if (!$isMerged){
-            $mollieSubscription = $this->owner->CustomerAPI()->createSubscription($this->subscription->toMollie(!$this->hasFirstPayment));
+            $mollieSubscription = $interface->createSubscription(
+                $this->owner,
+                $interface->getSubscriptionPayload($this->subscription, !$this->hasFirstPayment)
+            );
+            // ToDo: Make this dynamic for more interfaces.
             $this->subscription->update([
                 'mollie_subscription_id'=>$mollieSubscription->id,
                 'mollie_mandate_id'=>$mollieSubscription->mandateId

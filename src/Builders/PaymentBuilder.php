@@ -7,7 +7,7 @@ use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\SubscriptionInterval;
 
-class PaymentBuilder implements \PTM\MollieInterface\contracts\PaymentBuilder
+class PaymentBuilder extends Builder implements \PTM\MollieInterface\contracts\PaymentBuilder
 {
     use \PTM\MollieInterface\traits\PaymentBuilder;
 
@@ -15,6 +15,7 @@ class PaymentBuilder implements \PTM\MollieInterface\contracts\PaymentBuilder
 
     public function __construct(?float $total)
     {
+        parent::__construct();
         $this->total = $total ?? 0;
         $this->taxPercentage = env('SUBSCRIPTION_TAX', 21);
     }
@@ -88,9 +89,9 @@ class PaymentBuilder implements \PTM\MollieInterface\contracts\PaymentBuilder
      */
     public function create(){
         // Get payment variables
-        $payload = $this->getMolliePayload();
+        $payload = $this->getInterface()->getPaymentPayload($this);
         // Create mollie payment
-        $this->molliePayment = mollie()->payments()->create($payload);
+        $this->processorPayment = $this->getInterface()->createPayment($payload);
         // Connect payment to the subscription
         $payment = new Payment();
         $payment->fill($this->getPaymentPayload());

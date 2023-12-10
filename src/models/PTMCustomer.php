@@ -72,13 +72,13 @@ class PTMCustomer extends Model
 
     public function api(): \Mollie\Api\Resources\Customer
     {
-        return mollie()->customers()->get($this->mollie_customer_id);
+        return mollie()->customers()->get($this->customer_id);
     }
 
     public function getMergedSubscription($offset=0): ?\Mollie\Api\Resources\Subscription
     {
-        if (count($this->mollie_subscriptions) < ($offset+1)) return null;
-        $id = $this->mollie_subscriptions[$offset];
+        if (count($this->subscriptions) < ($offset+1)) return null;
+        $id = $this->subscriptions[$offset];
         if (!$id) return null;
         return $this->api()->getSubscription($id);
     }
