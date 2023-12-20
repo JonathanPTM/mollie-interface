@@ -24,7 +24,10 @@
 namespace PTM\MollieInterface\traits;
 
 
+use PTM\MollieInterface\contracts\OrderBuilder;
 use PTM\MollieInterface\contracts\SubscriptionBuilder;
+use PTM\MollieInterface\Events\OrderBuild;
+use PTM\MollieInterface\models\Order;
 use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\Redirect;
@@ -38,10 +41,11 @@ trait PTMBillable
 
     public function subscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, $forceConfirmationPayment=false): SubscriptionBuilder
     {
-        if (!$this->needsFirstPayment()) {
+        throw new \Exception("This function is deprecated. Please use the order builder.");
+        /*if (!$this->needsFirstPayment()) {
             return \PTM\MollieInterface\Builders\SubscriptionBuilder::fromPlan($this, $plan, $interval)->subscribedOn($subscribed_on)->forceConfirmation($forceConfirmationPayment);
         }
-        return FirstPaymentSubscriptionBuilder::fromPlan($this, $plan, $interval)->subscribedOn($subscribed_on);
+        return FirstPaymentSubscriptionBuilder::fromPlan($this, $plan, $interval)->subscribedOn($subscribed_on);*/
     }
 
     /**
@@ -59,7 +63,7 @@ trait PTMBillable
      * @param SubscriptionInterval $interval
      * @param bool $resetStartCycle
      * @param bool $forceConfirmationPayment
-     * @return SubscriptionBuilder|Subscription|Redirect
+     * @return OrderBuilder|Subscription|Redirect
      */
     public function updateOrSubscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, bool $resetStartCycle = true, $forceConfirmationPayment=false)
     {
@@ -90,7 +94,10 @@ trait PTMBillable
                 }
             }
             // Return new builder.
-            return $this->subscribe($plan, $subscribed_on, $interval, $forceConfirmationPayment);
+            $builder = Order::Builder();
+            // Connect the user to this order as billable.
+            $builder->setBillable($this);
+            return $builder;
         }
 
         // Check plan before changing.
