@@ -93,7 +93,6 @@ class OrderBuilder extends Builder implements \PTM\MollieInterface\contracts\Ord
      */
     public function setSubscription(SubscriptionBuilder $builder, bool $confirm=false): void
     {
-        $this->addAction(new changePaymentMethod($builder));
         if ($builder->mustConfirmPayment() || $confirm){
             // Set Payment.
             $this->setPayment($builder->getPaymentBuilder());
