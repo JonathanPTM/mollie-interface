@@ -54,17 +54,23 @@ class PaymentMethodHandler implements Handler
     public function execute(PaymentProcessor $interface)
     {
         $user = $this->subscription->billable;
+        // Destroy old subscription...
+        $interface->cancelSubscription($this->subscription);
         try {
             $this->subscription->update([
                 'mandate_id'=>$this->molliePayment->mandateId
             ]);
-            $newMollieSubscription = $interface->createSubscription($user, $this->subscription);
+            // Make new ...
+            $newMollieSub = $interface->createSubscription($user, $this->subscription);
+            $this->subscription->update([
+                'mandate_id'=>$this->molliePayment->mandateId,
+                'interface_id'=>$newMollieSub->id
+            ]);
         } catch (\Exception $exception){
             Log::error($exception);
             return false;
         }
-        // Destroy old subscription...
-        $interface->cancelSubscription($this->subscription);
+
         return true;
     }
 

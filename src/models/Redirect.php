@@ -4,12 +4,10 @@ namespace PTM\MollieInterface\models;
 
 class Redirect
 {
-    private $endpoint;
-    public function __construct(string $to)
+    public function __construct(public string $to)
     {
-        $this->endpoint = $to;
     }
     public function run(){
-        return redirect()->away($this->endpoint);
+        return redirect()->away($this->to);
     }
 }

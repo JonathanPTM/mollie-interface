@@ -61,7 +61,7 @@ class SimplePayment extends Builder implements \PTM\MollieInterface\contracts\Pa
 
     public function create()
     {
-        if (!$this->owner->mollieCustomer || !$this->owner->mollieCustomer->mollie_mandate_id) {
+        if (!$this->owner->ptmCustomer()->exists()) {
             throw new \Exception("Mollie customer doesn't have mandateID!");
         }
         // Create mollie payment
