@@ -7,11 +7,13 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Response;
 use PTM\MollieInterface\Events\FirstPaymentFailed;
 use PTM\MollieInterface\Events\PaymentPaid;
+use PTM\MollieInterface\Events\SubscriptionPaymentFailed;
 use PTM\MollieInterface\Http\Controllers\WebHooks\WebhookController;
 use PTM\MollieInterface\models\Order;
+use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\Repositories\Handlers\PaymentHandler;
 
-class OrderPaymentController  extends WebhookController
+class OrderSubscriptionController  extends WebhookController
 {
     public function hooked(Request $request)
     {
@@ -19,23 +21,15 @@ class OrderPaymentController  extends WebhookController
         if (!$payment) {
             return response("No payment was found.", 404);
         }
-        $order = Order::find($request->route('order'));
-        if (!$order){
-            return response("No order was found.", 403);
+        $subscription = Subscription::find($request->route('subscriptionId'));
+        if (!$subscription){
+            return response("No subscription was found.", 403);
         }
-        $localPayment = (new PaymentHandler($payment))->execute($order->getInterface());
+        $localPayment = (new PaymentHandler($payment))->execute($subscription->getInterface());
         if ($payment->isPaid()){
-            Event::dispatch(new PaymentPaid($payment, $localPayment));
-            $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
-            $payment->update();
-
-            // Execute order
-            if (!$order){
-                return response("No order was found.", 402);
-            }
-            $order->confirm($localPayment);
+            $subscription->getInterface()->updateSubscriptionAfterPayment($subscription, $payment);
         } else {
-            Event::dispatch(new FirstPaymentFailed($payment));
+            Event::dispatch(new SubscriptionPaymentFailed($payment, $localPayment));
         }
         return response("Ok", 200);
     }

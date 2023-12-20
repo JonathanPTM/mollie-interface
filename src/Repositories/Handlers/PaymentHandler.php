@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Mollie\Api\Resources\Payment;
 use PTM\MollieInterface\contracts\Handler;
 use PTM\MollieInterface\traits\PTMBillable;
+use \PTM\MollieInterface\contracts\PaymentProcessor;
 
 class PaymentHandler implements Handler
 {
@@ -45,18 +46,18 @@ class PaymentHandler implements Handler
         $this->molliePayment = $molliePayment;
         $this->owner = $this->extractOwner();
     }
-    public function execute()
+    public function execute(PaymentProcessor $interface)
     {
-        $localPayment = \PTM\MollieInterface\models\Payment::firstWhere('mollie_payment_id', $this->molliePayment->id);
+        $localPayment = \PTM\MollieInterface\models\Payment::where('interface_id', $this->molliePayment->id)->where('interface', $interface::class)->first();
         $localPayment->update(array_filter([
-            'mollie_payment_status'=>$this->molliePayment->status,
-            'mollie_mandate_id'=>$this->molliePayment->mandateId,
+            'payment_status'=>$this->molliePayment->status,
+            'mandate_id'=>$this->molliePayment->mandateId,
             'method'=>$this->molliePayment->method
         ]));
         if ($this->molliePayment->mandateId !== null){
             if ($this->owner){
-                $this->owner->mollieCustomer()->update([
-                    'mollie_mandate_id'=>$this->molliePayment->mandateId
+                $this->owner->ptmCustomer()->update([
+                    'mandate_id'=>$this->molliePayment->mandateId
                 ]);
             }
         }

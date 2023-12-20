@@ -37,9 +37,10 @@ class CreatePtmPaymentsTable extends Migration
         Schema::create('ptm_payments', function (Blueprint $table) {
             $table->id();
             $table->uuid('order_id')->nullable();
-            $table->string('mollie_payment_id');
-            $table->string('mollie_payment_status');
-            $table->string('mollie_mandate_id')->nullable();
+            $table->text('interface')->nullable();
+            $table->string('interface_id');
+            $table->string('payment_status');
+            $table->string('mandate_id')->nullable();
             $table->nullableUuidMorphs('paymentable');
             $table->uuidMorphs('billable');
             $table->string('currency', 3);

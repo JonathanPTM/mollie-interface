@@ -23,6 +23,7 @@
 
 use Illuminate\Support\Facades\Route;
 use PTM\MollieInterface\Http\Controllers\WebHooks\Order\OrderPaymentController;
+use PTM\MollieInterface\Http\Controllers\WebHooks\Order\OrderSubscriptionController;
 
 Route::prefix('/landing')->name('ptm_mollie.')->group(function (){
     Route::prefix('/redirect')->name('redirect.')->group(function (){
@@ -40,6 +41,8 @@ Route::prefix('/landing')->name('ptm_mollie.')->group(function (){
         });
 
         Route::prefix('/order/{order}')->name('order.')->group(function (){
+            Route::any('/subscription/{subscriptionId}', [OrderSubscriptionController::class, 'hooked'])
+                ->name('subscription');
             Route::any('/payment', [OrderPaymentController::class, 'hooked'])->name('payment');
         });
     });

@@ -5,10 +5,12 @@ namespace PTM\MollieInterface\Builders;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use PTM\MollieInterface\Builders\SubscriptionBuilder as SubBuilder;
 use PTM\MollieInterface\contracts\PaymentBuilder;
 use PTM\MollieInterface\contracts\SubscriptionBuilder;
-use PTM\MollieInterface\jobs\createSubscriptionAction;
+use PTM\MollieInterface\Events\OrderBuild;
+use PTM\MollieInterface\jobs\changePaymentMethod;
 use PTM\MollieInterface\models\Order;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\Redirect;
@@ -17,6 +19,7 @@ class OrderBuilder extends Builder implements \PTM\MollieInterface\contracts\Ord
 {
     public Order $order;
     public ?PaymentBuilder $payment = null;
+    private $paymentSaver;
 
     public function __construct()
     {
@@ -88,13 +91,23 @@ class OrderBuilder extends Builder implements \PTM\MollieInterface\contracts\Ord
      * @param bool $confirm if you want a confirmation payment.
      * @return void
      */
-    public function setSubscription(SubscriptionBuilder $builder, $confirm=false): void
+    public function setSubscription(SubscriptionBuilder $builder, bool $confirm=false): void
     {
-        $this->addAction(new createSubscriptionAction($builder));
+        $this->addAction(new changePaymentMethod($builder));
         if ($builder->mustConfirmPayment() || $confirm){
             // Set Payment.
             $this->setPayment($builder->getPaymentBuilder());
         }
+    }
+
+    /**
+     * If you would like to run your own logic for saving the payment, then provide a callback handler. cb($payment){...logic}
+     * @param callable $callback
+     * @return void
+     */
+    public function setPaymentSaver(callable $callback)
+    {
+        $this->paymentSaver = $callback;
     }
 
     /**
@@ -107,10 +120,17 @@ class OrderBuilder extends Builder implements \PTM\MollieInterface\contracts\Ord
         $this->order->interface = $this->exportInterface();
         $this->order->save();
 
+        // Trigger order event.
+        Event::dispatch(new OrderBuild($this->order));
+
         // if there is a payment, create it. Store it. And return redirect.
         if ($this->payment !== null){
             $payment = $this->payment->create();
-            $payment->save();
+            if ($this->paymentSaver && is_callable($this->paymentSaver)){
+                call_user_func($this->paymentSaver, $payment);
+            } else {
+                $payment->save();
+            }
             DB::commit();
             return $this->payment->redirect();
         }

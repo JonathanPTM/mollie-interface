@@ -32,7 +32,10 @@
         "laravel": {
             "providers": [
                 "PTM\\MollieInterface\\MollieInterfaceServiceProvider"
-            ]
+            ],
+            "aliases": {
+                "PTM": "PTM\\MollieInterface\\PTMFacade"
+            }
         }
     }
 }

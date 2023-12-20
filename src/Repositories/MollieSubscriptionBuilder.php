@@ -25,7 +25,6 @@ namespace PTM\MollieInterface\Repositories;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
-use Mollie\Api\Resources\Payment;
 use PTM\MollieInterface\contracts\Handler;
 use PTM\MollieInterface\contracts\PaymentProcessor;
 use PTM\MollieInterface\Events\SubscriptionCreated;
@@ -54,16 +53,17 @@ class MollieSubscriptionBuilder implements Handler
         if (!$isMerged){
             $mollieSubscription = $interface->createSubscription(
                 $this->owner,
-                $interface->getSubscriptionPayload($this->subscription, !$this->hasFirstPayment)
+                $this->subscription,
+                !$this->hasFirstPayment
             );
             // ToDo: Make this dynamic for more interfaces.
             $this->subscription->update([
-                'mollie_subscription_id'=>$mollieSubscription->id,
-                'mollie_mandate_id'=>$mollieSubscription->mandateId
+                'interface_id'=>$mollieSubscription->id,
+                'mandate_id'=>$mollieSubscription->mandateId
             ]);
         } else {
             // Run Merge job!
-            MergeSubscriptions::dispatch($this->owner->mollieCustomer)
+            MergeSubscriptions::dispatch($this->owner->ptmCustomer)
                 ->onQueue(config('ptm_subscription.bus'));
         }
         Event::dispatch(new SubscriptionCreated($this->subscription, $isMerged));

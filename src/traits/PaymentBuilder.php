@@ -153,7 +153,8 @@ trait PaymentBuilder
                 'billable_type' => $this->owner->getMorphClass(),
                 'billable_id' => $this->owner->getKey(),
                 'paymentable_type' => $this->paymentable?->getMorphClass(),
-                'paymentable_id' => $this->paymentable?->getKey()
+                'paymentable_id' => $this->paymentable?->getKey(),
+                'interface' => $this->getInterface()::class
             ]
         ));
     }

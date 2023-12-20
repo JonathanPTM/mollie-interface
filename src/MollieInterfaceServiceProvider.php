@@ -25,6 +25,7 @@ namespace PTM\MollieInterface;
 
 
 use Illuminate\Support\ServiceProvider;
+use PTM\MollieInterface\Facade\PTM;
 
 class MollieInterfaceServiceProvider extends ServiceProvider
 {
@@ -48,6 +49,8 @@ class MollieInterfaceServiceProvider extends ServiceProvider
     }
 
     public function register(){
-
+        $this->app->bind('ptm', function ($app) {
+            return new PTM();
+        });
     }
 }

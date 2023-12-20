@@ -88,10 +88,8 @@ class PaymentBuilder extends Builder implements \PTM\MollieInterface\contracts\P
      * @throws \Mollie\Api\Exceptions\ApiException
      */
     public function create(){
-        // Get payment variables
-        $payload = $this->getInterface()->getPaymentPayload($this);
         // Create mollie payment
-        $this->processorPayment = $this->getInterface()->createPayment($payload);
+        $this->processorPayment = $this->getInterface()->createPayment($this);
         // Connect payment to the subscription
         $payment = new Payment();
         $payment->fill($this->getPaymentPayload());

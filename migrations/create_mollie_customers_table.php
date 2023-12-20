@@ -38,7 +38,7 @@ class CreatePtmMollieCustomersTable extends Migration
             $table->text('interface')->nullable();
             $table->string('customer_id')->nullable();
             $table->string('mandate_id')->nullable();
-            $table->boolean('merged');
+            $table->boolean('merged')->default(0);
             $table->json('subscriptions')->default('[]');
             $table->dateTime('trial_ends_at')->nullable();
             $table->text('extra_billing_information')->nullable();

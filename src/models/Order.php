@@ -5,9 +5,11 @@ namespace PTM\MollieInterface\models;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use PTM\MollieInterface\Builders\Builder;
 use PTM\MollieInterface\Builders\OrderBuilder;
+use PTM\MollieInterface\Events\OrderConfirmed;
 use ReflectionClass;
 
 class Order extends Model
@@ -145,6 +147,8 @@ class Order extends Model
         $this->confirmatable()->associate($confirmedBy);
         $this->save();
         $this->executeActions();
+        // Trigger logic.
+        Event::dispatch(new OrderConfirmed($this));
     }
 
     /**

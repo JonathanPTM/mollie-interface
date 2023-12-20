@@ -28,6 +28,8 @@ use Illuminate\Support\Facades\Log;
 use Mollie\Api\Resources\Payment as MolliePayment;
 use Money\Currency;
 use Money\Money;
+use PTM\MollieInterface\contracts\PaymentProcessor;
+use PTM;
 use PTM\MollieInterface\traits\PaymentMethodString;
 
 class Payment extends \Illuminate\Database\Eloquent\Model
@@ -38,9 +40,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
     /**
      * @var string[]
      */
-    protected $casts = [
-        'first_payment_actions' => 'object',
-    ];
+    protected $casts = [];
 
     /**
      * The attributes that are mass assignable.
@@ -49,9 +49,10 @@ class Payment extends \Illuminate\Database\Eloquent\Model
      */
     protected $fillable = [
         'order_id',
-        'mollie_payment_id',
-        'mollie_payment_status',
-        'mollie_mandate_id',
+        'interface',
+        'interface_id',
+        'payment_status',
+        'mandate_id',
         'method',
         'currency',
         'amount',
@@ -64,90 +65,59 @@ class Payment extends \Illuminate\Database\Eloquent\Model
         'paymentable_type',
         'paymentable_id'
     ];
+
     /**
-     * @param MolliePayment $payment
+     * @param $payment
      * @param \Illuminate\Database\Eloquent\Model $owner
      * @param array $actions
      * @param array $overrides
      * @return static
      */
-    public static function makeOrFindFromMolliePayment(MolliePayment $payment, Model $owner, Model $billable, array $actions = [], array $overrides = [], int $offset = null): self
+    public static function makeOrFindFromPayment($payment, Model $owner, Model $billable, PaymentProcessor $interface = null, array $overrides = [], int $offset = null): self
     {
-        $found = $owner->payments()->firstWhere('mollie_payment_id', $payment->id);
+        if (!$interface) $interface = PTM::getInterface();
+        $found = $owner->payments()->firstWhere('interface_id', $payment->id);
         if ($found) {
-            $amountChargedBack = $payment->amountChargedBack
-                ? (float)$payment->amountChargedBack->value
-                : 0.0;
 
-            $amountRefunded = $payment->amountRefunded
-                ? (float)$payment->amountRefunded->value
-                : 0.0;
-
-            $localActions = !empty($actions) ? $actions : $payment->metadata->actions ?? null;
-            $found->fill(array_merge([
-                'mollie_payment_id' => $payment->id,
-                'mollie_payment_status' => $payment->status,
-                'currency' => $payment->amount->currency,
-                'amount' => (float)$payment->amount->value,
-                'amount_refunded' => $amountRefunded,
-                'amount_charged_back' => $amountChargedBack,
-                'mollie_mandate_id' => $payment->mandateId,
-                'method'=> $payment->method,
-                'first_payment_actions' => $localActions,
-                'paymentable_offset'=>$offset
-            ], $overrides));
+            $found->fill(array_merge(
+                $interface->makePaymentFromProvider($payment),
+                [
+                    'interface'=>$interface::class,
+                    'paymentable_offset'=>$offset
+                ],
+                $overrides
+            ));
             return $found;
         }
-        return self::makeFromMolliePayment($payment, $owner, $billable, $actions, $overrides, $offset);
+        return self::makeFromPayment($payment, $owner, $billable, $interface, $overrides, $offset);
     }
 
     /**
-     * @param MolliePayment $payment
+     * @param $payment
      * @param \Illuminate\Database\Eloquent\Model $owner
      * @param array $actions
      * @param array $overrides
      * @return static
      */
-    public static function makeFromMolliePayment(MolliePayment $payment, Model $owner, Model $billable, array $actions = [], array $overrides = [], int $offset = null): self
+    public static function makeFromPayment($payment, Model $owner, Model $billable, PaymentProcessor $interface = null, array $overrides = [], int $offset = null): self
     {
-        $amountChargedBack = $payment->amountChargedBack
-            ? (float)$payment->amountChargedBack->value
-            : 0.0;
-
-        $amountRefunded = $payment->amountRefunded
-            ? (float)$payment->amountRefunded->value
-            : 0.0;
-
-        $localActions = !empty($actions) ? $actions : $payment->metadata->actions ?? null;
+        if (!$interface) $interface = PTM::getInterface();
 
         Log::debug("Payment billable id is {$billable->id}", [$billable->getMorphClass()]);
 
-        return $owner->payments()->make(array_merge([
-            'mollie_payment_id' => $payment->id,
-            'mollie_payment_status' => $payment->status,
-            'currency' => $payment->amount->currency,
-            'amount' => (float)$payment->amount->value,
-            'amount_refunded' => $amountRefunded,
-            'amount_charged_back' => $amountChargedBack,
-            'mollie_mandate_id' => $payment->mandateId,
-            'method'=> $payment->method,
-            'first_payment_actions' => $localActions,
-            'paymentable_offset'=>$offset
-        ], $overrides))->billable()->associate($billable);
+        return $owner->payments()
+            ->make(
+                array_merge(
+                    $interface->makePaymentFromProvider($payment),
+                    [
+                        'interface'=>$interface::class,
+                        'paymentable_offset'=>$offset
+                    ],
+                    $overrides
+                ))
+            ->billable()
+            ->associate($billable);
 
-        /*return static::make(array_merge([
-            'mollie_payment_id' => $payment->id,
-            'mollie_payment_status' => $payment->status,
-            'owner_type' => $owner->getMorphClass(),
-            'owner_id' => $owner->getKey(),
-            'currency' => $payment->amount->currency,
-            'amount' => (float)$payment->amount->value,
-            'amount_refunded' => $amountRefunded,
-            'amount_charged_back' => $amountChargedBack,
-            'mollie_mandate_id' => $payment->mandateId,
-            'first_payment_actions' => $localActions,
-            'paymentable_offset'=>$offset
-        ], $overrides));*/
     }
 
     /**
@@ -156,13 +126,24 @@ class Payment extends \Illuminate\Database\Eloquent\Model
      * @param $id
      * @return static
      */
-    public static function findByPaymentId($id): ?self
+    public static function findByPaymentId($id, PaymentProcessor $interface = null): ?self
     {
-        return static::where('mollie_payment_id', $id)->first();
+        if (!$interface) $interface = PTM::getInterface();
+        return static::where('interface_id', $id)
+            ->where('interface', $interface::class)
+            ->first();
     }
 
-    public function getMolliePayment(){
-        return mollie()->payments()->get($this->mollie_payment_id);
+    /**
+     * @return PaymentProcessor
+     */
+    public function getInterface(){
+        if (!$this->interface) return PTM::getInterface();
+        return PTM::importInterface($this->interface);
+    }
+
+    public function getInterfacePayment(){
+        return $this->getInterface()->getPayment($this);
     }
 
     /**
@@ -173,10 +154,10 @@ class Payment extends \Illuminate\Database\Eloquent\Model
      *
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
      */
-    public static function findByPaymentIdOrFail($id): self
+    public static function findByPaymentIdOrFail($id, PaymentProcessor $interface = null): self
     {
-        if ($id instanceof \Mollie\Api\Resources\Payment) $id = $id->id;
-        return static::where('mollie_payment_id', $id)->firstOrFail();
+        if (!$interface) $interface = PTM::getInterface();
+        return static::where('interface_id', $id)->where('interface', $interface::class)->firstOrFail();
     }
 
     /**
@@ -197,7 +178,7 @@ class Payment extends \Illuminate\Database\Eloquent\Model
 
     public function markAsPaid(){
         $this->update([
-            'mollie_payment_status' => 'paid'
+            'payment_status' => 'paid'
         ]);
     }
 
@@ -205,39 +186,12 @@ class Payment extends \Illuminate\Database\Eloquent\Model
      * @return bool
      */
     public function isPaid(){
-        return $this->mollie_payment_status === 'paid';
+        return $this->payment_status === 'paid';
     }
 
     public function getStatusAttribute()
     {
-        return $this->mollie_payment_status;
+        return $this->payment_status;
     }
 
-    /**
-     * Find a Payment by the Mollie payment id, or create a new Payment record from a Mollie payment if not found.
-     *
-     * @param \Mollie\Api\Resources\Payment $molliePayment
-     * @param \Illuminate\Database\Eloquent\Model $owner
-     * @param array $actions
-     * @return static
-     */
-    public static function findByMolliePaymentOrCreate(MolliePayment $molliePayment, Model $owner, Model $billable): self
-    {
-        $payment = self::findByPaymentId($molliePayment->id);
-
-        if ($payment) {
-            return $payment;
-        }
-
-        return $owner->payments()->make(array_filter([
-            'mollie_payment_id' => $molliePayment->id,
-            'mollie_payment_status' => $molliePayment->status,
-            'mollie_mandate_id' => $molliePayment->mandateId,
-            'method'=> $molliePayment->method,
-            'currency' => $molliePayment->amount->currency,
-            'amount' => $molliePayment->amount->value,
-            'amount_refunded' => ($molliePayment->amountRefunded ? $molliePayment->amountRefunded->value : null),
-            'amount_charged_back' => ($molliePayment->amountChargedBack ? $molliePayment->amountChargedBack->value : null)
-        ]))->billable()->associate($billable)->save();
-    }
 }

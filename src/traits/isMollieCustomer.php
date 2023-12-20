@@ -24,7 +24,9 @@
 namespace PTM\MollieInterface\traits;
 
 use Mollie\Laravel\Facades\Mollie;
+use PTM\MollieInterface\contracts\PaymentProcessor;
 use PTM\MollieInterface\models\PTMCustomer;
+use PTM\MollieInterface\PTMFacade;
 
 trait isMollieCustomer
 {
@@ -47,14 +49,14 @@ trait isMollieCustomer
      *
      * @return string
      */
-    public function CustomerId($interface=null)
+    public function CustomerId(PaymentProcessor $interface=null)
     {
-        if (!$interface) $interface = config('ptm_subscriptions.default_processor');
-        if (!$this->ptmCustomer()->where('interface',$interface)->exists()) {
-            return $this->createAsMollieCustomer()->id;
+        if (!$interface) $interface = PTMFacade::getInterface();
+        if (!$this->ptmCustomer()->where('interface',$interface::class)->exists()) {
+            return $this->createAsCustomer()->id;
         }
 
-        return $this->ptmCustomer()->where('interface',$interface)->get()->customer_id;
+        return $this->ptmCustomer()->where('interface',$interface::class)->first()->customer_id;
     }
 
     /**
@@ -63,41 +65,33 @@ trait isMollieCustomer
      * @param array $override_options
      * @return \Mollie\Api\Resources\Customer
      */
-    public function createAsMollieCustomer(array $override_options = [], $interface=null): \Mollie\Api\Resources\Customer
+    public function createAsCustomer(array $override_options = [], PaymentProcessor$interface=null): \Mollie\Api\Resources\Customer
     {
-        if (!$interface) $interface = config('ptm_subscriptions.default_processor');
-        $options = array_merge($this->mollieCustomerFields(), $override_options);
+        if (!$interface) $interface = PTMFacade::getInterface();
 
-        $customer = Mollie::api()->customers()->create($options);
+        $customer = $interface->createCustomer($this, $override_options);
 
         $this->ptmCustomer()->updateOrCreate([
-            'interface'=>$interface,
-            'mollie_customer_id' => $customer->id
+            'interface'=>$interface::class,
+            'customer_id' => $customer->id
         ]);
 
         return $customer;
     }
 
-    public function mollieCustomerFields()
+    public function mandateId(PaymentProcessor$interface=null)
     {
-        return [
-            'name'=> $this->name,
-            'email' => $this->email
-        ];
-    }
-
-    public function mollieMandateId($interface=null)
-    {
-        if (!$interface) $interface = config('ptm_subscriptions.default_processor');
-        return $this->ptmCustomer()->where('interface',$interface)->mollie_mandate_id;
+        if (!$interface) $interface = PTMFacade::getInterface();
+        return $this->ptmCustomer()->where('interface',$interface::class)->mandate_id;
     }
 
     /**
      * @return \Mollie\Api\Resources\Customer
      * @throws \Mollie\Api\Exceptions\ApiException
      */
-    public function CustomerAPI()
+    public function CustomerAPI(PaymentProcessor$interface=null)
     {
-        return Mollie::api()->customers()->get($this->CustomerId());
+        if (!$interface) $interface = PTMFacade::getInterface();
+        return $interface->CustomerAPI($this->CustomerId($interface));
     }
 }

@@ -3,10 +3,13 @@
 namespace PTM\MollieInterface\Interfaces;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use PTM\MollieInterface\contracts\PaymentBuilder;
 use PTM\MollieInterface\contracts\PaymentProcessor;
+use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Redirect;
 use PTM\MollieInterface\models\Subscription;
+use PTM\MollieInterface\models\SubscriptionInterval;
 
 class MollieInterface implements PaymentProcessor
 {
@@ -29,13 +32,13 @@ class MollieInterface implements PaymentProcessor
      * @param PaymentBuilder $builder
      * @return array
      */
-    public function getPaymentPayload(PaymentBuilder $builder): array
+    private function getPaymentPayload(PaymentBuilder $builder): array
     {
         return array_filter(array_merge([
             'sequenceType' => $builder->sequenceType,
             'cardToken'=>$builder->cardToken,
             'method'=>$builder->method,
-            'customerId' => $builder->mollieCustomerId ?? $builder->owner->mollieCustomerId(),
+            'customerId' => $builder->mollieCustomerId ?? $builder->owner->CustomerId(),
             'description' => $builder->description,
             'amount' => $this->money_to_mollie_array($builder->total),
             'webhookUrl' => $builder->webhookUrl,
@@ -52,15 +55,15 @@ class MollieInterface implements PaymentProcessor
         ], $builder->options));
     }
 
-    public function createPayment($payload){
-        return mollie()->payments()->create($payload);
+    public function createPayment(PaymentBuilder $builder){
+        return mollie()->payments()->create($this->getPaymentPayload($builder));
     }
 
     public function paymentToDatabase($payment){
         return array_filter([
-            'mollie_payment_id' => $payment->id,
-            'mollie_payment_status' => $payment->status,
-            'mollie_mandate_id' => $payment->mandateId,
+            'interface_id' => $payment->id,
+            'payment_status' => $payment->status,
+            'mandate_id' => $payment->mandateId,
             'currency' => $payment->amount->currency,
             'amount' => $payment->amount->value,
             'amount_refunded' => ($payment->amountRefunded ? $payment->amountRefunded->value : null),
@@ -70,25 +73,26 @@ class MollieInterface implements PaymentProcessor
     
     public function getRedirect($payment): Redirect
     {
-        return new Redirect($payment->redirectUrl);
+        return new Redirect($payment->getCheckoutUrl());
     }
 
-    public function createSubscription($owner, $payload) {
-        $owner
+    public function createSubscription($owner, Subscription $subscription, $startNow=false) {
+        return $owner
             ->CustomerAPI()
-            ->createSubscription($payload);
+            ->createSubscription($this->getSubscriptionPayload($subscription, $startNow));
     }
 
-    public function getSubscriptionPayload(Subscription $subscription, $startNow=false){
+    private function getSubscriptionPayload(Subscription $subscription, $startNow=false){
         $interval = $subscription->getInterval();
         return [
             'amount'=>$this->money_to_mollie_array($subscription->getAmount()),
             'interval'=>$interval->toMollie(),
             'startDate'=> ($startNow ? now()->format('Y-m-d') : Carbon::parse($subscription->cycle_ends_at)->format('Y-m-d')),
-            'description'=>($subscription->subscribed_on ?? $subscription->id)." - ".$subscription->plan->description,
-            'mandateId'=>$subscription->mollie_mandate_id ?? $subscription->billable->mollieCustomer->mollie_mandate_id,
+            'description'=>$subscription->getDiscriminator()." - ".$subscription->plan->description,
+            'mandateId'=>$subscription->mandate_id ?? $subscription->billable->ptmCustomer()->where('interface', self::class)->first()->mandate_id,
             'webhookUrl'=>route('ptm_mollie.webhook.payment.subscription', ['subscription_id' => $subscription->id]),
             'metadata'=>[
+                'id'=>$subscription->id,
                 'subscribed_on'=>$subscription->subscribed_on,
                 'billable'=>[
                     'type'=>$subscription->billable_type,
@@ -96,5 +100,68 @@ class MollieInterface implements PaymentProcessor
                 ]
             ]
         ];
+    }
+
+    public function makePaymentFromProvider($payment): array {
+        $amountChargedBack = $payment->amountChargedBack
+            ? (float)$payment->amountChargedBack->value
+            : 0.0;
+
+        $amountRefunded = $payment->amountRefunded
+            ? (float)$payment->amountRefunded->value
+            : 0.0;
+        return [
+            'mollie_payment_id' => $payment->id,
+            'mollie_payment_status' => $payment->status,
+            'currency' => $payment->amount->currency,
+            'amount' => (float)$payment->amount->value,
+            'amount_refunded' => $amountRefunded,
+            'amount_charged_back' => $amountChargedBack,
+            'mollie_mandate_id' => $payment->mandateId,
+            'method'=> $payment->method
+        ];
+    }
+    
+    public function getPayment(Payment $payment){
+        return mollie()->payments()->get($payment->interface_id);
+    }
+
+    public function createCustomer(Model $user, $override_options){
+        $options = array_merge(
+            method_exists($user, 'mollieCustomerFields')
+                ? $user->mollieCustomerFields()
+                : $this->mollieCustomerFields($user),
+            $override_options
+        );
+        $customer = mollie()->customers()->create($options);
+        return $customer;
+    }
+
+    public function mollieCustomerFields(Model $user)
+    {
+        return [
+            'name'=> $user->name,
+            'email' => $user->email
+        ];
+    }
+
+    public function CustomerAPI($id){
+        return mollie()->customers()->get($id);
+    }
+
+    public function updateSubscriptionAfterPayment(Subscription $subscription, $payment){
+        $mollieSubscription = mollie()->subscriptions()->getForId($payment->customerId, $payment->subscriptionId);
+        $subscription->updateCycle(Carbon::parse($payment->paidAt), Carbon::parse($mollieSubscription->nextPaymentDate));
+        $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
+        $payment->update();
+    }
+
+    public function getCycle(Subscription$subscription){
+        $mollieSubscription = $subscription->billable->CustomerAPI($this)->getSubscription($subscription->interface_id);
+        return SubscriptionInterval::fromMollie($mollieSubscription->interval);
+    }
+
+    public function cancelSubscription(Subscription$subscription){
+        $subscription->billable->CustomerAPI($subscription->getInterface())->getSubscription($subscription->interface_id)->cancel();
     }
 }

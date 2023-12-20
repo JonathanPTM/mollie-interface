@@ -25,13 +25,16 @@ namespace PTM\MollieInterface\models;
 
 use Carbon\Carbon;
 use Exception;
+use PTM;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Mollie\Api\Types\SequenceType;
+use PTM\MollieInterface\Builders\Builder;
+use PTM\MollieInterface\contracts\PaymentProcessor;
 use PTM\MollieInterface\Events\SubscriptionCancelled;
 use PTM\MollieInterface\Events\SubscriptionChange;
 use PTM\MollieInterface\jobs\MergeSubscriptions;
-use PTM\MollieInterface\Repositories\SimplePayment;
+use PTM\MollieInterface\Builders\SimplePayment;
 use PTM\MollieInterface\traits\PaymentMethodString;
 
 class Subscription extends \Illuminate\Database\Eloquent\Model
@@ -39,6 +42,24 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     use \Illuminate\Database\Eloquent\Factories\HasFactory, PaymentMethodString;
 
     protected $table = 'ptm_subscriptions';
+
+    private Builder $processor;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->processor = new Builder();
+        if ($this->interface !== null){
+            $this->processor->setInterface($this->interface);
+        }
+    }
+
+    /**
+     * @return \PTM\MollieInterface\contracts\PaymentProcessor
+     */
+    public function getInterface(){
+        return $this->processor->getInterface();
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -48,8 +69,9 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     protected $fillable = [
         'subscribed_on',
         'plan_id',
-        'mollie_subscription_id',
-        'mollie_mandate_id',
+        'interface',
+        'interface_id',
+        'mandate_id',
         'tax_percentage',
         'is_merged',
         'ends_at',
@@ -88,9 +110,10 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
      * @param $id
      * @return Subscription|null
      */
-    public static function findBySubscriptionId($id): ?self
+    public static function findBySubscriptionId($id, PaymentProcessor$interface=null): ?self
     {
-        return static::where('mollie_subscription_id', $id)->first();
+        if (!$interface) $interface = PTM::getInterface();
+        return static::where('interface_id', $id)->where('interface', $interface::class)->first();
     }
 
     /**
@@ -102,20 +125,6 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     public static function findByPaymentId($id): ?self
     {
         return self::findBySubscriptionId($id);
-    }
-
-    /**
-     * Retrieve a Payment by the Mollie Payment id or throw an Exception if not found.
-     *
-     * @param $id
-     * @return static
-     *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
-     */
-    public static function findByPaymentIdOrFail($id): self
-    {
-        if ($id instanceof \Mollie\Api\Resources\Subscription) $id = $id->id;
-        return static::where('mollie_subscription_id', $id)->firstOrFail();
     }
 
     /**
@@ -148,12 +157,10 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         if (!$this->cycle_started_at || !$this->cycle_ends_at) return SubscriptionInterval::MONTHLY;
         if ($this->cycle) return SubscriptionInterval::from($this->cycle);
         try {
-            $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->mollie_subscription_id);
-            $interval = SubscriptionInterval::fromMollie($mollieSubscription->interval);
+            $interval = $this->getInterface()->getCycle($this);
             $this->update([
                 'cycle'=>$interval->value
             ]);
-            Log::debug("Update cycle!");
         } catch (Exception$exception) {
             \Illuminate\Support\Facades\Log::error($exception);
             return SubscriptionInterval::MONTHLY;
@@ -162,19 +169,18 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     }
 
     public function endSubscription(bool $force=false){
-        if (!$this->mollie_subscription_id) {
+        if (!$this->interface_id) {
             throw new \RuntimeException("Subscription hasn't started yet. Mollie subscription ID is missing.");
         }
         // End subscription at mollie's end...
-        $billable = $this->billable;
-        if (!$this->is_merged) $billable->CustomerAPI()->getSubscription($this->mollie_subscription_id)->cancel();
+        if (!$this->is_merged) $this->getInterface()->cancelSubscription($this);
 
         $this->update([
             'ends_at'=>$force ? now() : $this->cycle_ends_at
         ]);
         Event::dispatch(new SubscriptionCancelled($this));
         if ($this->is_merged){
-            MergeSubscriptions::dispatch($this->billable->mollieCustomer)
+            MergeSubscriptions::dispatch($this->billable->ptmCustomer()->firstWhere('interface', $this->getInterface()::class))
                 ->onQueue(config('ptm_subscription.bus'));
         }
         return $this;
@@ -219,31 +225,38 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
      * @param $cardToken
      * @param $cost
      * @param $options
-     * @return array
+     * @return Order|Redirect
      * @throws Exception
      */
-    public function changePaymentMethod($method=null, $cardToken=null, $cost=0.25, $options=[]): array
+    public function changePaymentMethod($method=null, $cardToken=null, $cost=0.25, $options=[]): Order|Redirect
     {
-        $builder = new SimplePayment($this->billable, $cost, "Change payment method", $options);
+        $builder = Order::Builder();
+        $builder->setBillable($this->billable);
+        $payment = new SimplePayment($this->billable, $cost, "Change payment method", $options);
 
-        if ($method) $builder->setMethod($method);
-        if ($cardToken) $builder->setCardToken($cardToken);
+        if ($method) $payment->setMethod($method);
+        if ($cardToken) $payment->setCardToken($cardToken);
 
-        $builder->setSequenceType(SequenceType::SEQUENCETYPE_FIRST);
+        $payment->setSequenceType(SequenceType::SEQUENCETYPE_FIRST);
 
-        $builder->setWebhookUrl(route('ptm_mollie.webhook.payment.subscription.method', ['id'=>$this->id]));
+        $builder->setPayment($payment);
+        $subscriptionID = $this->id;
+        $builder->setPaymentSaver(function ($p) use ($subscriptionID) {
+            Subscription::find($subscriptionID)->payments()->save($p);
+        });
 
-        $result = $builder->create();
-        $this->payments()->save($result['payment']);
-        return $result;
+        $builder->addAction(new PTM\MollieInterface\jobs\changePaymentMethod());
+
+        return $builder->build();
     }
 
     public function isActive(){
-        return $this->payments()->where('mollie_payment_status', 'paid')->exists();
+        if ($this->ends_at && Carbon::parse($this->ends_at)->isPast()) return false;
+        return $this->payments()->where('payment_status', 'paid')->exists();
     }
 
     public function mandatePayment(){
-        return $this->hasOne(Payment::class, 'mollie_mandate_id', 'mollie_mandate_id');
+        return $this->hasOne(Payment::class, 'mandate_id', 'mandate_id');
     }
 
     /**
@@ -252,6 +265,14 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
      */
     public function getAmount(){
         return $this->plan->mandatedAmountIncl($this->getInterval(), $this->tax_percentage);
+    }
+
+    public function getDiscriminator(){
+        if ($this->subscribed_on) {
+            $arr = explode('-', $this->subscribed_on);
+            return $arr[0];
+        }
+        return $this->id;
     }
 
 }

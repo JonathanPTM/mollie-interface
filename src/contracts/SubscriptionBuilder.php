@@ -25,6 +25,7 @@ namespace PTM\MollieInterface\contracts;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use PTM\MollieInterface\models\Order;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\SubscriptionInterval;
 
@@ -50,7 +51,7 @@ interface SubscriptionBuilder
      * This function is called upon by an order action.
      * @return mixed
      */
-    public function executeOrder();
+    public function executeOrder(Order $order);
 
     /**
      * Override the default next payment date.

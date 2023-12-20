@@ -18,8 +18,9 @@ class CreatePtmSubscriptionsTable extends Migration
             $table->text('subscribed_on');
             $table->foreignId('plan_id');
             $table->morphs('billable');
-            $table->string('mollie_subscription_id')->nullable();
-            $table->string('mollie_mandate_id')->nullable();
+            $table->text('interface')->nullable();
+            $table->string('interface_id')->nullable();
+            $table->string('mandate_id')->nullable();
             $table->boolean('is_merged')->default(false);
             $table->decimal('tax_percentage', 6, 4)->default(0);
             $table->datetime('ends_at')->nullable();

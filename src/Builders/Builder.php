@@ -3,6 +3,7 @@
 namespace PTM\MollieInterface\Builders;
 
 use PTM\MollieInterface\contracts\PaymentProcessor;
+use PTM\MollieInterface\PTMFacade;
 use ReflectionClass;
 
 class Builder
@@ -13,21 +14,25 @@ class Builder
      * @throws \ReflectionException
      * @throws \Exception
      */
-    public function __construct()
+    public function __construct($loadDefault=false)
     {
+        if (!$loadDefault) {
+            $this->interface = PTMFacade::getInterface();
+            return;
+        }
         $defaultClass = config("ptm_subscription.default_processor");
-        $this->importInterface($defaultClass);
+        $this->interface = $this->importInterface($defaultClass);
     }
 
     /**
      * @throws \ReflectionException
      */
-    private function importInterface($class): void
+    public function importInterface($class): object
     {
         $ref = new ReflectionClass($class);
         if (!$ref->implementsInterface(PaymentProcessor::class))
             throw new \Exception("Expected PaymentProcessor, but was provided a different class as default processor.");
-        $this->interface = $ref->newInstance();
+        return $ref->newInstance();
     }
 
     /**
@@ -61,7 +66,7 @@ class Builder
     public function setInterface(string|PaymentProcessor $processor): void
     {
         if (is_string($processor)){
-            $this->importInterface($processor);
+            $this->interface = $this->importInterface($processor);
         } else {
             $this->interface = $processor;
         }

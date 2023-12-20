@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Log;
 use Mollie\Api\Resources\Payment;
 use PTM\MollieInterface\contracts\Handler;
+use PTM\MollieInterface\contracts\PaymentProcessor;
 use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\traits\PTMBillable;
 
@@ -50,7 +51,7 @@ class PaymentMethodHandler implements Handler
         $this->subscription = $subscription;
         $this->owner = $this->extractOwner();
     }
-    public function execute()
+    public function execute(PaymentProcessor $interface)
     {
         $user = $this->subscription->billable;
         /**

@@ -40,14 +40,16 @@ class AftercareController extends WebhookController
 
         $localPayment = Payment::findByPaymentIdOrFail($payment->id);
 
+        $interface = $localPayment->getInterface();
+
         if ($payment->hasChargebacks()){
             // Handle Chargebacks
-            (new PaymentChargebackHandler($payment, $localPayment))->execute();
+            (new PaymentChargebackHandler($payment, $localPayment))->execute($interface);
         }
 
         if ($payment->hasRefunds()){
             // Handle Refund.
-            (new PaymentRefundHandler($payment, $localPayment))->execute();
+            (new PaymentRefundHandler($payment, $localPayment))->execute($interface);
         }
 
         return new Response(null, 200);

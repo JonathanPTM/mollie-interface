@@ -27,6 +27,8 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Mollie\Api\Exceptions\ApiException;
 use Mollie\Api\Types\SequenceType;
+use PTM\MollieInterface\contracts\PaymentProcessor;
+use PTM\MollieInterface\models\Order;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\SubscriptionInterval;
 use PTM\MollieInterface\Repositories\MollieSubscriptionBuilder;
@@ -74,8 +76,8 @@ class SubscriptionBuilder extends Builder implements \PTM\MollieInterface\contra
      */
     public function create()
     {
-
-        if (!$this->owner->mollieCustomer || !$this->owner->mollieCustomer->mollie_mandate_id) {
+        // ToDo: Fix mulitple interfaces.
+        if (!$this->owner->ptmCustomer || !$this->owner->ptmCustomer->mandate_id) {
             throw new \Exception("Mollie customer doesn't have mandateID!");
         }
         // Create subscription entry
@@ -104,14 +106,15 @@ class SubscriptionBuilder extends Builder implements \PTM\MollieInterface\contra
         return (new MollieSubscriptionBuilder($subscription, $this->owner))->execute();
     }
 
-    public function executeOrder()
+    public function executeOrder(Order$order)
     {
-        if (!$this->owner->mollieCustomer || !$this->owner->mollieCustomer->mollie_mandate_id) {
-            throw new \Exception("Mollie customer doesn't have mandateID!");
+        if (!$this->owner->ptmCustomer()->where('interface', $this->builder->getInterface()::class)->whereNotNull('mandate_id')->exists()) {
+            throw new \Exception("Interface customer doesn't have mandateID!");
         }
         // Create subscription entry
         $subscription = $this->buildSubscription();
-        return (new MollieSubscriptionBuilder($subscription, $this->owner))->execute();
+        $this->webhookUrl = route('ptm_mollie.webhook.order.subscription',['order'=>$order->id,'subscriptionId'=>$subscription->id]);
+        return (new MollieSubscriptionBuilder($subscription, $this->owner))->execute($this->builder->getInterface());
     }
 
     private function buildSubscription(){

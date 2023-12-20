@@ -1,6 +1,6 @@
 <?php
 /*
- *  mollie_interface - Handler.php Copyright (c) 2023 PTMDevelopment -  Jonathan. All rights reserved.
+ *  mollie_interface - FirstPaymentFailed.php Copyright (c) 2023 PTMDevelopment -  Jonathan. All rights reserved.
  *  The software is protected by copyright laws and international copyright treaties,
  *  as well as other intellectual property laws and treaties. The software is licensed, not sold.
  *  You are not allowed to resell, claim ownership of, or modify the software in any way.
@@ -21,11 +21,16 @@
  *  SOFTWARE.
  */
 
-namespace PTM\MollieInterface\contracts;
+namespace PTM\MollieInterface\Events;
 
-use PTM\MollieInterface\contracts\PaymentProcessor;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+use Mollie\Api\Resources\Payment;
+use PTM\MollieInterface\models\Order;
 
-interface Handler
+class OrderConfirmed
 {
-    public function execute(PaymentProcessor $interface);
+    use SerializesModels, Dispatchable;
+
+    public function __construct(public Order $order){}
 }

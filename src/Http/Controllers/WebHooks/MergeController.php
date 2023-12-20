@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use PTM\MollieInterface\Events\PaymentPaid;
 use PTM\MollieInterface\jobs\MergeSubscriptions;
-use PTM\MollieInterface\models\MollieCustomer;
+use PTM\MollieInterface\models\PTMCustomer;
 use PTM\MollieInterface\models\Subscription;
 
 class MergeController extends WebhookController
@@ -19,7 +19,7 @@ class MergeController extends WebhookController
         }
         $query = $request->query;
         $localSubscription = Subscription::find($request->get('subscription_id'));
-        $customer = MollieCustomer::where('mollie_customer_id', $payment->customerId)->first();
+        $customer = PTMCustomer::where('customer_id', $payment->customerId)->first();
         $offset = null;
         if ($query->has('offset') && $query->get('offset') !== 'false'){
             $offset = $query->get('offset');

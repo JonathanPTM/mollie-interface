@@ -26,6 +26,7 @@ namespace PTM\MollieInterface\Repositories\Handlers;
 use Illuminate\Support\Facades\Event;
 use Mollie\Api\Resources\Payment;
 use PTM\MollieInterface\contracts\Handler;
+use PTM\MollieInterface\contracts\PaymentProcessor;
 use PTM\MollieInterface\Events\ReceivedChargeback;
 
 class PaymentChargebackHandler implements Handler
@@ -44,7 +45,7 @@ class PaymentChargebackHandler implements Handler
         $this->record = $record;
     }
 
-    public function execute()
+    public function execute(PaymentProcessor $interface)
     {
         $localAmount = $this->record->amount_charged_back;
         if ($this->record->amount_charged_back < $this->molliePayment->amountChargedBack->value)

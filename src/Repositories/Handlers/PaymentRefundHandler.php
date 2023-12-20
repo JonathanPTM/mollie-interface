@@ -26,6 +26,7 @@ namespace PTM\MollieInterface\Repositories\Handlers;
 use Illuminate\Support\Facades\Event;
 use Mollie\Api\Resources\Payment;
 use PTM\MollieInterface\contracts\Handler;
+use PTM\MollieInterface\contracts\PaymentProcessor;
 use PTM\MollieInterface\Events\ReceivedChargeback;
 
 class PaymentRefundHandler implements Handler
@@ -44,7 +45,7 @@ class PaymentRefundHandler implements Handler
         $this->record = $record;
     }
 
-    public function execute()
+    public function execute(PaymentProcessor$interface)
     {
         if ((float) $this->record->amount_refunded !== (float) $this->molliePayment->amountRefunded->value)
         {
