@@ -34,7 +34,7 @@ class CreatePtmMollieCustomersTable extends Migration
     public function up()
     {
         Schema::create('ptm_customers', function (Blueprint $table) {
-            $table->morphs('billable');
+            $table->uuidMorphs('billable');
             $table->text('interface')->nullable();
             $table->string('customer_id')->nullable();
             $table->string('mandate_id')->nullable();

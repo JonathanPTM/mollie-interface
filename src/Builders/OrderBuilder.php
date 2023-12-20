@@ -10,7 +10,7 @@ use PTM\MollieInterface\Builders\SubscriptionBuilder as SubBuilder;
 use PTM\MollieInterface\contracts\PaymentBuilder;
 use PTM\MollieInterface\contracts\SubscriptionBuilder;
 use PTM\MollieInterface\Events\OrderBuild;
-use PTM\MollieInterface\jobs\changePaymentMethod;
+use PTM\MollieInterface\jobs\createSubscriptionAction;
 use PTM\MollieInterface\models\Order;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\Redirect;
@@ -93,6 +93,7 @@ class OrderBuilder extends Builder implements \PTM\MollieInterface\contracts\Ord
      */
     public function setSubscription(SubscriptionBuilder $builder, bool $confirm=false): void
     {
+        $this->addAction(new createSubscriptionAction($builder));
         if ($builder->mustConfirmPayment() || $confirm){
             // Set Payment.
             $this->setPayment($builder->getPaymentBuilder());

@@ -207,7 +207,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
         if ($this->mollie_subscription_id && !$this->is_merged){
             $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->mollie_subscription_id);
             $mollieSubscription->amount = $this->money_to_mollie_array($plan->mandatedAmountIncl($this->getInterval(), $this->tax_percentage));
-            $mollieSubscription->description = ($this->subscribed_on ?? $this->id)." - ".$this->plan->description;
+            $mollieSubscription->description = $this->getDiscriminator()." - ".$this->plan->description;
             $mollieSubscription->update();
         }
         $this->plan_id = $plan->id;
@@ -245,7 +245,7 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
             Subscription::find($subscriptionID)->payments()->save($p);
         });
 
-        $builder->addAction(new PTM\MollieInterface\jobs\changePaymentMethod());
+        $builder->addAction(new PTM\MollieInterface\jobs\changePaymentMethod($this));
 
         return $builder->build();
     }

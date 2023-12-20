@@ -17,7 +17,7 @@ class CreatePtmSubscriptionsTable extends Migration
             $table->id();
             $table->text('subscribed_on');
             $table->foreignId('plan_id');
-            $table->morphs('billable');
+            $table->uuidMorphs('billable');
             $table->text('interface')->nullable();
             $table->string('interface_id')->nullable();
             $table->string('mandate_id')->nullable();

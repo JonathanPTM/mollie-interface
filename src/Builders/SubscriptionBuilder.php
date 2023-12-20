@@ -122,6 +122,7 @@ class SubscriptionBuilder extends Builder implements \PTM\MollieInterface\contra
             'subscribed_on' => $this->thread,
             'plan_id' => $this->builder->getPlan()->id ?? 0,
             'tax_percentage' => $this->builder->taxPercentage ?? 0,
+            'interface'=>$this->getInterface()::class,
             'ends_at' => null,
             'cycle'=>$this->builder->interval->value,
             'cycle_started_at' => now(),

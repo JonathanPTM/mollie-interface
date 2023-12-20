@@ -164,4 +164,8 @@ class MollieInterface implements PaymentProcessor
     public function cancelSubscription(Subscription$subscription){
         $subscription->billable->CustomerAPI($subscription->getInterface())->getSubscription($subscription->interface_id)->cancel();
     }
+
+    public function getSubscription(Subscription $subscription, $customerId){
+        return mollie()->subscriptions()->getForId($customerId, $subscription->interface_id);
+    }
 }

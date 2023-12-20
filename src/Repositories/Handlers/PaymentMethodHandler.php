@@ -54,25 +54,17 @@ class PaymentMethodHandler implements Handler
     public function execute(PaymentProcessor $interface)
     {
         $user = $this->subscription->billable;
-        /**
-         * @var $customerAPI \Mollie\Api\Resources\Customer
-         */
-        $customerAPI = $user->mollieCustomer->api();
-        $mollieSubscription = $customerAPI->getSubscription($this->subscription->mollie_subscription_id);
-
         try {
             $this->subscription->update([
-                'mollie_mandate_id'=>$this->molliePayment->mandateId
+                'mandate_id'=>$this->molliePayment->mandateId
             ]);
-
-            $payload = $this->subscription->toMollie();
-            $newMollieSubscription = $customerAPI->createSubscription($payload);
+            $newMollieSubscription = $interface->createSubscription($user, $this->subscription);
         } catch (\Exception $exception){
             Log::error($exception);
             return false;
         }
         // Destroy old subscription...
-        $mollieSubscription->cancel();
+        $interface->cancelSubscription($this->subscription);
         return true;
     }
 

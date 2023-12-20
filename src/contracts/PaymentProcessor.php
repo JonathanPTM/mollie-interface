@@ -20,4 +20,5 @@ interface PaymentProcessor
     public function updateSubscriptionAfterPayment(Subscription $subscription, $payment);
     public function getCycle(Subscription$subscription);
     public function cancelSubscription(Subscription$subscription);
+    public function getSubscription(Subscription $subscription, $customerId);
 }
