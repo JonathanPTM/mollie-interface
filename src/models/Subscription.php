@@ -187,8 +187,9 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     }
 
     public function changeInterval(SubscriptionInterval $interval, $resetStartCycle=false){
-        if ($this->mollie_subscription_id){
-            $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->mollie_subscription_id);
+        if ($this->interface_id){
+            // ToDo: Make interface dynamic call.
+            $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->interface_id);
             $mollieSubscription->interval = $interval->toMollie();
             if ($resetStartCycle){
                 $mollieSubscription->startDate = now()->format('Y-m-d');
@@ -204,17 +205,20 @@ class Subscription extends \Illuminate\Database\Eloquent\Model
     }
 
     public function changePlan(Plan$plan){
-        if ($this->mollie_subscription_id && !$this->is_merged){
-            $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->mollie_subscription_id);
+
+        if ($this->interface_id && !$this->is_merged){
+            // ToDo: Make interface dynamic call.
+            $mollieSubscription = $this->billable->CustomerAPI()->getSubscription($this->interface_id);
             $mollieSubscription->amount = $this->money_to_mollie_array($plan->mandatedAmountIncl($this->getInterval(), $this->tax_percentage));
             $mollieSubscription->description = $this->getDiscriminator()." - ".$this->plan->description;
             $mollieSubscription->update();
         }
+
         $this->plan_id = $plan->id;
         $this->save();
         Event::dispatch(new SubscriptionChange($this));
         if ($this->is_merged){
-            MergeSubscriptions::dispatch($this->billable->mollieCustomer)
+            MergeSubscriptions::dispatch($this->billable->ptmCustomer)
                 ->onQueue(config('ptm_subscription.bus'));
         }
         return $this;

@@ -68,8 +68,9 @@ trait PTMBillable
     public function updateOrSubscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, bool $resetStartCycle = true, $forceConfirmationPayment=false)
     {
         $subscription = $this->getSubscription($subscribed_on);
-        if (!$subscription || $subscription->ends_at || !$subscription->mollie_subscription_id){
-            if ($subscription && !$subscription->mollie_subscription_id){
+        if (!$subscription || $subscription->ends_at || !$subscription->interface_id){
+
+            if ($subscription && !$subscription->interface_id){
                 // Check if subscription already exists and the payment is still open...
                 if (!$subscription->isActive()
                     && $subscription->plan_id === $plan->id
@@ -93,6 +94,7 @@ trait PTMBillable
                     }
                 }
             }
+
             // Return new builder.
             $builder = Order::Builder();
             // Connect the user to this order as billable.
@@ -140,11 +142,11 @@ trait PTMBillable
     }
 
     public function isMerged(){
-        return $this->mollieCustomer->merge_subscriptions ?? false;
+        return $this->ptmCustomer->merge_subscriptions ?? false;
     }
 
     public function getMandates(){
-        return $this->mollieCustomer->api()->mandates();
+        return $this->ptmCustomer->api()->mandates();
     }
     
 
