@@ -25,6 +25,7 @@ namespace PTM\MollieInterface\traits;
 
 
 use PTM\MollieInterface\contracts\OrderBuilder;
+use PTM\MollieInterface\contracts\PaymentProcessor;
 use PTM\MollieInterface\contracts\SubscriptionBuilder;
 use PTM\MollieInterface\Events\OrderBuild;
 use PTM\MollieInterface\models\Order;
@@ -33,6 +34,7 @@ use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\Redirect;
 use PTM\MollieInterface\models\Subscription;
 use PTM\MollieInterface\models\SubscriptionInterval;
+use PTM\MollieInterface\PTMFacade;
 use PTM\MollieInterface\Repositories\FirstPaymentSubscriptionBuilder;
 
 trait PTMBillable
@@ -42,10 +44,6 @@ trait PTMBillable
     public function subscribe(Plan $plan, $subscribed_on, SubscriptionInterval $interval = SubscriptionInterval::MONTHLY, $forceConfirmationPayment=false): SubscriptionBuilder
     {
         throw new \Exception("This function is deprecated. Please use the order builder.");
-        /*if (!$this->needsFirstPayment()) {
-            return \PTM\MollieInterface\Builders\SubscriptionBuilder::fromPlan($this, $plan, $interval)->subscribedOn($subscribed_on)->forceConfirmation($forceConfirmationPayment);
-        }
-        return FirstPaymentSubscriptionBuilder::fromPlan($this, $plan, $interval)->subscribedOn($subscribed_on);*/
     }
 
     /**
@@ -141,13 +139,17 @@ trait PTMBillable
         return $this->subscriptions()->orderByDesc('created_at')->firstWhere('subscribed_on', $identifier);
     }
 
-    public function isMerged(){
-        return $this->ptmCustomer->merge_subscriptions ?? false;
+    public function isMerged(PaymentProcessor $interface=null){
+        if (!$interface) $interface = PTMFacade::getInterface();
+        return $this->ptmCustomer()->where('interface',$interface::class)->where('merge_subscriptions', true)->exists() ?? false;
     }
 
-    public function getMandates(){
-        return $this->ptmCustomer->api()->mandates();
+    public function getMandates(PaymentProcessor $interface=null){
+        if (!$interface) $interface = PTMFacade::getInterface();
+        if ($cus = $this->ptmCustomer()->where('interface',$interface::class)->get()){
+            return $cus->api()->mandates();
+        }
+        return null;
     }
-    
 
 }
