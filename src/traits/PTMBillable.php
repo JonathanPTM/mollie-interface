@@ -141,7 +141,7 @@ trait PTMBillable
 
     public function isMerged(PaymentProcessor $interface=null){
         if (!$interface) $interface = PTMFacade::getInterface();
-        return $this->ptmCustomer()->where('interface',$interface::class)->where('merge_subscriptions', true)->exists() ?? false;
+        return $this->ptmCustomer()->where('interface',$interface::class)->where('merged', true)->exists() ?? false;
     }
 
     public function getMandates(PaymentProcessor $interface=null){
