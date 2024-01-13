@@ -25,10 +25,12 @@ namespace PTM\MollieInterface\Builders;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Mollie\Api\Exceptions\ApiException;
 use Mollie\Api\Types\SequenceType;
 use PTM\MollieInterface\contracts\PaymentProcessor;
 use PTM\MollieInterface\models\Order;
+use PTM\MollieInterface\models\Payment;
 use PTM\MollieInterface\models\Plan;
 use PTM\MollieInterface\models\SubscriptionInterval;
 use PTM\MollieInterface\Repositories\MollieSubscriptionBuilder;
@@ -113,6 +115,19 @@ class SubscriptionBuilder extends Builder implements \PTM\MollieInterface\contra
         }
         // Create subscription entry
         $subscription = $this->buildSubscription();
+
+        // Set Payment relation
+        if ($order->confirmatable && $order->confirmatable instanceof Payment){
+            try {
+                $order->confirmatable
+                    ->paymentable()
+                    ->associate($subscription)
+                    ->save();
+            } catch (\Exception $exception){
+                Log::error("Somethign went wrong while linking subscription to payment after order completion.", $exception->getTrace());
+            }
+        }
+
         $this->webhookUrl = route('ptm_mollie.webhook.order.subscription',['order'=>$order->id,'subscriptionId'=>$subscription->id]);
         return (new MollieSubscriptionBuilder($subscription, $this->owner))->execute($this->builder->getInterface());
     }
