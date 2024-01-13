@@ -55,7 +55,6 @@ class SubscriptionBuilder extends Builder implements \PTM\MollieInterface\contra
         $this->forceConfirmationPayment = false;
         $builder->redirectUrl = url('');
         if ($plan) $builder->setPlan($plan);
-        $builder->setPaymentable($this);
         $this->builder = $builder;
     }
 

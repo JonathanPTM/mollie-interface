@@ -125,6 +125,7 @@ class OrderBuilder extends Builder implements \PTM\MollieInterface\contracts\Ord
 
         // if there is a payment, create it. Store it. And return redirect.
         if ($this->payment !== null){
+            if (!$this->payment->paymentable) $this->payment->setPaymentable($this->order);
             $payment = $this->payment->create();
             if ($this->paymentSaver && is_callable($this->paymentSaver)){
                 call_user_func($this->paymentSaver, $payment);
