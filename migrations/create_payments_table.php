@@ -45,9 +45,9 @@ class CreatePtmPaymentsTable extends Migration
             $table->uuidMorphs('billable');
             $table->string('currency', 3);
             $table->string('method')->nullable();
-            $table->unsignedInteger('amount')->default(0);
-            $table->unsignedInteger('amount_refunded')->default(0);
-            $table->unsignedInteger('amount_charged_back')->default(0);
+            $table->unsignedFloat('amount')->default(0);
+            $table->unsignedFloat('amount_refunded')->default(0);
+            $table->unsignedFloat('amount_charged_back')->default(0);
             $table->timestamps();
         });
     }
