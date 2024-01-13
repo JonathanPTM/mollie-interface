@@ -2,6 +2,7 @@
 
 namespace PTM\MollieInterface\contracts;
 
+use Illuminate\Database\Eloquent\Model;
 use PTM\MollieInterface\models\Redirect;
 
 interface PaymentBuilder
@@ -14,6 +15,7 @@ interface PaymentBuilder
     public function getPaymentPayload();
     public function setOrderID(string $id): void;
     public function setWebhookUrl(string $webhookUrl): void;
+    public function setPaymentable(?Model $paymentable): void;
     public function getProcessorPayment(): ?\Mollie\Api\Resources\Payment;
     public function redirect(): ?Redirect;
 }

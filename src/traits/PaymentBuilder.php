@@ -139,6 +139,14 @@ trait PaymentBuilder
     }
 
     /**
+     * @param Model|null $paymentable
+     */
+    public function setPaymentable(?Model $paymentable): void
+    {
+        $this->paymentable = $paymentable;
+    }
+
+    /**
      * Build the payment column values
      *
      * @return array|null

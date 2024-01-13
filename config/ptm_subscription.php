@@ -25,5 +25,6 @@ return [
     'tax' => 21,
     'bus' => 'developmentBus',
     'break' => 990,
-    'default_processor' => 'PTM\MollieInterface\Interfaces\MollieInterface'
+    'default_processor' => 'PTM\MollieInterface\Interfaces\MollieInterface',
+    'debug' => true
 ];
