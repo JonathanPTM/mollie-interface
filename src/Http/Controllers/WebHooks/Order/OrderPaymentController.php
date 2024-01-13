@@ -25,15 +25,16 @@ class OrderPaymentController  extends WebhookController
         }
         $localPayment = (new PaymentHandler($payment))->execute($order->getInterface());
         if ($payment->isPaid()){
-            Event::dispatch(new PaymentPaid($payment, $localPayment));
             $payment->webhookUrl = route('ptm_mollie.webhook.payment.after');
             $payment->update();
 
             // Execute order
             if (!$order){
+                Event::dispatch(new PaymentPaid($payment, $localPayment));
                 return response("No order was found.", 402);
             }
             $order->confirm($localPayment);
+            Event::dispatch(new PaymentPaid($payment, $localPayment));
         } else {
             Event::dispatch(new FirstPaymentFailed($payment));
         }
